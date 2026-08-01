@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>クロノロジー｜災害対応 経時記録</title>
 
-<!-- PWA関連メタ・マニフェスト -->
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2563eb">
 <link rel="apple-touch-icon" href="./icons/icon-192.jpg">
@@ -13,62 +12,33 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="クロノロ">
 
-<!-- Tailwind CSS（CDN） -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Google Fonts（読みやすい日本語向けフォント） -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 
-<!-- PDF出力用ライブラリ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
-  /* 日本語フォントを基本フォントに設定 */
   body {
     font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
-  /* iPhoneのノッチ・ホームバー対応（Safe Area） */
   .safe-top { padding-top: env(safe-area-inset-top); }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-  /* ボタンは常に44px以上の高さを確保（タップしやすさ重視） */
   .btn-base { min-height: 44px; }
-
-  /* タブ切替時、非アクティブなパネルを隠す */
   .tab-panel.hidden-panel { display: none; }
-
-  /* 記録一覧テーブルのスクロールエリア */
-  .entries-scroll {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* トグルスイッチの見た目 */
+  .entries-scroll { -webkit-overflow-scrolling: touch; }
   .toggle-switch { width: 46px; height: 26px; }
-  .toggle-knob {
-    width: 20px; height: 20px;
-    transition: transform 0.2s ease-in-out;
-  }
+  .toggle-knob { width: 20px; height: 20px; transition: transform 0.2s ease-in-out; }
   input:checked + .toggle-track .toggle-knob { transform: translateX(20px); }
   input:checked + .toggle-track { background-color: #2563eb; }
-
-  /* PDF出力用の一時表示エリア（画面には見えない位置に配置） */
-  #pdf-export-container {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    width: 760px;
-    background: #ffffff;
-  }
+  #pdf-export-container { position: absolute; left: -9999px; top: 0; width: 760px; background: #ffffff; }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
 
-<!-- ============================================================
-     Googleサインイン用オーバーレイ（未サインイン時に表示）
-     ============================================================ -->
 <div id="signin-overlay" class="fixed inset-0 z-50 bg-gray-900/90 flex items-center justify-center p-6">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center">
     <div class="mx-auto mb-4 w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center">
@@ -85,12 +55,8 @@
   </div>
 </div>
 
-<!-- ============================================================
-     アプリ本体（サインイン後に表示）
-     ============================================================ -->
 <div id="app-root" class="hidden flex-1 flex flex-col min-h-screen">
 
-  <!-- ---------- ヘッダー：タイトル／オンオフ切替／同期バッジ ---------- -->
   <header class="safe-top bg-blue-600 text-white shadow-md sticky top-0 z-30">
     <div class="px-3 pt-2 pb-2 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
@@ -98,9 +64,7 @@
         <h1 class="font-bold text-base leading-tight truncate">クロノロジー</h1>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <!-- 同期状態バッジ：Firestoreのpending writesに応じて表示切替 -->
         <span id="sync-badge" class="text-[11px] font-semibold px-2 py-1 rounded-full bg-white/20 whitespace-nowrap">✅ 同期済み</span>
-        <!-- オンライン／オフライン切替ボタン -->
         <button id="btn-network-toggle" type="button"
           class="btn-base text-[11px] font-semibold px-3 py-2 rounded-full bg-white text-blue-700 shadow whitespace-nowrap">
           オフラインに切替
@@ -109,25 +73,32 @@
     </div>
   </header>
 
-  <!-- ---------- エラーメッセージ表示エリア（アラートは使わない） ---------- -->
   <div id="error-banner" class="hidden mx-3 mt-2 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm px-3 py-2 flex items-start justify-between gap-2">
     <span id="error-banner-text" class="flex-1"></span>
     <button id="error-banner-close" type="button" class="text-red-500 font-bold px-1">×</button>
   </div>
 
-  <!-- ---------- メインコンテンツ（タブパネル） ---------- -->
   <main class="flex-1 overflow-y-auto pb-24">
 
-    <!-- ============================================================
-         タブ①：記録
-         ============================================================ -->
     <section id="panel-record" class="tab-panel p-3 space-y-4">
 
-      <!-- 記録入力フォーム -->
+      <!-- ★追加：勤務打刻セクション -->
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>⏱️</span>勤務打刻</h2>
+        <div class="flex gap-2">
+          <button id="btn-work-start" type="button" class="btn-base flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold py-2 active:bg-green-100 shadow-sm">
+            🟢 勤務開始を記録
+          </button>
+          <button id="btn-work-end" type="button" class="btn-base flex-1 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold py-2 active:bg-red-100 shadow-sm">
+            🔴 勤務終了を記録
+          </button>
+        </div>
+        <p class="text-[11px] text-gray-400">※「日時を指定」がオンの場合は、その日時で記録されます（押し忘れ対応）</p>
+      </div>
+
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📝</span>新しい記録</h2>
 
-        <!-- 日時指定関連 -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <button id="btn-now" type="button"
@@ -149,7 +120,6 @@
           <p id="entry-datetime-preview" class="text-xs text-gray-500 pl-1"></p>
         </div>
 
-        <!-- 発（From） -->
         <div>
           <label class="text-xs font-semibold text-gray-500">発（From）</label>
           <div class="flex gap-2 mt-1">
@@ -161,7 +131,6 @@
           </div>
         </div>
 
-        <!-- 受（To） -->
         <div>
           <label class="text-xs font-semibold text-gray-500">受（To）</label>
           <div class="flex gap-2 mt-1">
@@ -173,7 +142,6 @@
           </div>
         </div>
 
-        <!-- 内容 -->
         <div>
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold text-gray-500">内容</label>
@@ -191,7 +159,6 @@
         </button>
       </div>
 
-      <!-- 記録一覧 -->
       <div class="bg-white rounded-xl shadow-sm p-3">
         <div class="flex items-center justify-between mb-2 px-1">
           <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📋</span>記録一覧</h2>
@@ -217,9 +184,6 @@
       </div>
     </section>
 
-    <!-- ============================================================
-         タブ②：検索／PDF
-         ============================================================ -->
     <section id="panel-search" class="tab-panel hidden-panel p-3 space-y-4">
 
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
@@ -270,20 +234,23 @@
           </table>
           <p id="search-list-empty" class="text-center text-xs text-gray-400 py-6">検索条件を指定して「検索する」を押してください</p>
         </div>
-
-        <button id="btn-export-pdf" type="button"
-          class="btn-base w-full mt-3 bg-gray-800 text-white rounded-lg font-bold py-3 shadow active:bg-gray-900">
-          📑 PDFで出力
-        </button>
       </div>
+
+      <!-- ★追加：勤務時間集計 -->
+      <div id="work-time-summary-card" class="bg-white rounded-xl shadow-sm p-4 hidden">
+        <h2 class="font-bold text-gray-700 flex items-center gap-1 border-b pb-2 mb-2"><span>📊</span>勤務時間集計</h2>
+        <div id="work-time-summary-content" class="text-sm text-gray-700 space-y-2"></div>
+      </div>
+
+      <button id="btn-export-pdf" type="button"
+        class="btn-base w-full mt-3 bg-gray-800 text-white rounded-lg font-bold py-3 shadow active:bg-gray-900">
+        📑 検索結果と集計をPDFで出力
+      </button>
+
     </section>
 
-    <!-- ============================================================
-         タブ③：設定
-         ============================================================ -->
     <section id="panel-settings" class="tab-panel hidden-panel p-3 space-y-4">
 
-      <!-- ユーザー情報 -->
       <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3">
         <img id="user-photo" src="" alt="" class="w-10 h-10 rounded-full bg-gray-200 hidden">
         <div class="min-w-0">
@@ -292,11 +259,9 @@
         </div>
       </div>
 
-      <!-- 定型文管理 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-4">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
 
-        <!-- 内容の定型文 -->
         <div>
           <p class="text-xs font-semibold text-gray-500 mb-1">内容の定型文</p>
           <div class="flex gap-2">
@@ -307,7 +272,6 @@
           <ul id="list-template-content" class="mt-2 space-y-1"></ul>
         </div>
 
-        <!-- 発の定型文 -->
         <div>
           <p class="text-xs font-semibold text-gray-500 mb-1">発（From）の定型文</p>
           <div class="flex gap-2">
@@ -318,7 +282,6 @@
           <ul id="list-template-from" class="mt-2 space-y-1"></ul>
         </div>
 
-        <!-- 受の定型文 -->
         <div>
           <p class="text-xs font-semibold text-gray-500 mb-1">受（To）の定型文</p>
           <div class="flex gap-2">
@@ -330,7 +293,6 @@
         </div>
       </div>
 
-      <!-- データ管理 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>💾</span>データ管理</h2>
         <button id="btn-export-json" type="button"
@@ -343,7 +305,6 @@
         </button>
       </div>
 
-      <!-- ログアウト -->
       <div class="bg-white rounded-xl shadow-sm p-4">
         <button id="btn-signout" type="button"
           class="btn-base w-full bg-gray-800 text-white rounded-lg font-semibold py-2.5 active:bg-gray-900">
@@ -353,7 +314,6 @@
     </section>
   </main>
 
-  <!-- ---------- 下部固定タブナビゲーション ---------- -->
   <nav class="safe-bottom fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 flex">
     <button id="nav-record" data-panel="panel-record" class="nav-btn flex-1 btn-base flex flex-col items-center justify-center gap-0.5 py-2 text-blue-600">
       <span class="text-lg">📝</span><span class="text-[11px] font-semibold">記録</span>
@@ -367,13 +327,16 @@
   </nav>
 </div>
 
-<!-- ============================================================
-     PDF出力用の非表示テンプレート（html2canvasでこの要素を画像化する）
-     ============================================================ -->
 <div id="pdf-export-container">
   <div style="padding:24px; font-family: 'Noto Sans JP', sans-serif; color:#1f2937;">
     <h1 style="font-size:22px; font-weight:900; margin:0 0 4px 0;">経時記録</h1>
     <p id="pdf-export-date" style="font-size:12px; color:#6b7280; margin:0 0 16px 0;"></p>
+
+    <div id="pdf-work-time-summary" style="display:none; margin-bottom:16px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb;">
+      <h2 style="font-size:14px; font-weight:bold; margin:0 0 8px 0;">勤務時間集計</h2>
+      <div id="pdf-work-time-content" style="font-size:12px; line-height:1.5;"></div>
+    </div>
+
     <table style="width:100%; border-collapse:collapse; font-size:12px;">
       <colgroup>
         <col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:56%">
@@ -391,13 +354,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     メインスクリプト（Firebase v10 モジュラーSDK使用）
-     ============================================================ -->
 <script type="module">
-  /* =========================================================
-   * 1. Firebase SDK の読み込み（v10 / モジュラー / ESM CDN）
-   * ========================================================= */
   import {
     initializeApp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -423,13 +380,7 @@
     serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  /* =========================================================
-   * 2. Firebase設定（★ここに実際の値を入力してください★）
-   * -----------------------------------------------------------
-   * Firebaseコンソール > プロジェクトの設定 > 全般 >
-   * 「マイアプリ」の SDK 設定と構成 から取得した値を
-   * 下記オブジェクトにそのまま貼り付けてください。
-   * ========================================================= */
+  // ★ここは元のコードのままです。変更していません。
   const firebaseConfig = {
     apiKey: "AIzaSyCiyk9VqvCz87EV7bgnEWEDqZ2_81NlGHc",
     authDomain: "chronology-app-75e60.firebaseapp.com",
@@ -438,26 +389,16 @@
     messagingSenderId: "985799183659",
     appId: "1:985799183659:web:2bdbc4b76fddb9ce9b096e"
   };
-  // ↑↑↑ ここまでがFirebase設定 ↑↑↑
 
-  /* =========================================================
-   * 3. Firebase 初期化
-   * ========================================================= */
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const googleProvider = new GoogleAuthProvider();
 
-  // オフラインキャッシュ（マルチタブ対応のIndexedDB永続化）を有効化
   enableMultiTabIndexedDbPersistence(db).catch((err) => {
-    // 複数タブが原因の失敗（failed-precondition）や非対応ブラウザ（unimplemented）は
-    // 動作継続に支障がないため、コンソールに記録するのみでアプリは通常通り動かす
     console.warn("オフライン永続化を有効化できませんでした：", err.code || err);
   });
 
-  /* =========================================================
-   * 4. DOM要素の取得
-   * ========================================================= */
   const el = (id) => document.getElementById(id);
 
   const signinOverlay = el('signin-overlay');
@@ -475,7 +416,9 @@
   const navButtons = document.querySelectorAll('.nav-btn');
   const tabPanels = document.querySelectorAll('.tab-panel');
 
-  // 記録タブ
+  // 記録タブ（★勤務打刻ボタンをここに追加）
+  const btnWorkStart = el('btn-work-start');
+  const btnWorkEnd = el('btn-work-end');
   const btnNow = el('btn-now');
   const toggleManualDatetime = el('toggle-manual-datetime');
   const entryDatetimeInput = el('entry-datetime');
@@ -492,7 +435,7 @@
   const recordListScroll = el('record-list-scroll');
   const recordCount = el('record-count');
 
-  // 検索タブ
+  // 検索タブ（★勤務時間集計カードをここに追加）
   const searchStart = el('search-start');
   const searchEnd = el('search-end');
   const searchKeyword = el('search-keyword');
@@ -502,6 +445,8 @@
   const searchListEmpty = el('search-list-empty');
   const searchCount = el('search-count');
   const btnExportPdf = el('btn-export-pdf');
+  const workTimeSummaryCard = el('work-time-summary-card');
+  const workTimeSummaryContent = el('work-time-summary-content');
 
   // 設定タブ
   const userPhoto = el('user-photo');
@@ -517,31 +462,24 @@
   const btnDeleteAll = el('btn-delete-all');
   const btnSignout = el('btn-signout');
 
-  // PDF出力用テンプレート
+  // PDF出力用
   const pdfExportContainer = el('pdf-export-container');
   const pdfExportDate = el('pdf-export-date');
   const pdfExportBody = el('pdf-export-body');
+  const pdfWorkTimeSummary = el('pdf-work-time-summary');
+  const pdfWorkTimeContent = el('pdf-work-time-content');
 
-  /* =========================================================
-   * 5. 状態管理変数
-   * ========================================================= */
-  let currentUser = null;          // サインイン中のFirebaseユーザー
-  let entriesUnsub = null;         // entriesのonSnapshot購読解除関数
-  let templatesUnsub = null;       // templatesのonSnapshot購読解除関数
-  let allEntries = [];             // 現在ログイン中ユーザーの全記録（メモリ上キャッシュ）
-  let allTemplates = { content: [], from: [], to: [] }; // 定型文一覧
-  let isNetworkEnabled = true;     // オンライン／オフライン状態フラグ
-  let lastSearchResults = [];      // 直近の検索結果（PDF出力に使用）
+  let currentUser = null;
+  let entriesUnsub = null;
+  let templatesUnsub = null;
+  let allEntries = [];
+  let allTemplates = { content: [], from: [], to: [] };
+  let isNetworkEnabled = true;
+  let lastSearchResults = [];
 
-  /* =========================================================
-   * 6. 共通ユーティリティ関数
-   * ========================================================= */
-
-  // エラーメッセージを画面内バナーに表示する（alertは使わない）
   function showError(message) {
     errorBannerText.textContent = message;
     errorBanner.classList.remove('hidden');
-    // 8秒後に自動で隠す
     clearTimeout(showError._timer);
     showError._timer = setTimeout(() => hideError(), 8000);
   }
@@ -550,30 +488,25 @@
   }
   errorBannerClose.addEventListener('click', hideError);
 
-  // JavaScriptのDateを"YYYY-MM-DDTHH:mm"形式（datetime-local入力用）に変換
   function toDatetimeLocalValue(date) {
     const pad = (n) => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
-  // FirestoreのTimestampまたはDateを安全にDateへ変換
   function toDate(value) {
     if (!value) return new Date();
     if (typeof value.toDate === 'function') return value.toDate();
     return new Date(value);
   }
 
-  // 日付部分（M/D）の文字列を生成
   function formatDatePart(date) {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   }
-  // 時刻部分（HH:MM）の文字列を生成
   function formatTimePart(date) {
     const pad = (n) => String(n).padStart(2, '0');
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
-  // HTMLエスケープ（内容欄などにHTMLタグが入力された場合の表示崩れ・XSS対策）
   function escapeHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;')
@@ -583,9 +516,6 @@
       .replace(/'/g, '&#39;');
   }
 
-  /* =========================================================
-   * 7. タブ切り替え処理
-   * ========================================================= */
   function switchTab(panelId) {
     tabPanels.forEach((p) => {
       p.classList.toggle('hidden-panel', p.id !== panelId);
@@ -600,14 +530,10 @@
     btn.addEventListener('click', () => switchTab(btn.dataset.panel));
   });
 
-  /* =========================================================
-   * 8. 認証処理（Googleサインイン）
-   * ========================================================= */
   btnGoogleSignin.addEventListener('click', async () => {
     signinError.classList.add('hidden');
     try {
       await signInWithPopup(auth, googleProvider);
-      // 成功するとonAuthStateChangedが発火し、以降の初期化処理が走る
     } catch (err) {
       console.error(err);
       signinError.textContent = 'サインインに失敗しました。通信環境をご確認のうえ再度お試しください。';
@@ -626,7 +552,6 @@
   onAuthStateChanged(auth, (user) => {
     if (user) {
       currentUser = user;
-      // サインイン済みならサインイン画面をスキップしてアプリ本体を表示
       signinOverlay.classList.add('hidden');
       appRoot.classList.remove('hidden');
       appRoot.classList.add('flex');
@@ -642,7 +567,6 @@
       initDefaultDatetime();
     } else {
       currentUser = null;
-      // 購読を解除してからサインイン画面に戻す
       if (entriesUnsub) { entriesUnsub(); entriesUnsub = null; }
       if (templatesUnsub) { templatesUnsub(); templatesUnsub = null; }
       allEntries = [];
@@ -653,19 +577,14 @@
     }
   });
 
-  /* =========================================================
-   * 9. オンライン／オフライン切り替え
-   * ========================================================= */
   btnNetworkToggle.addEventListener('click', async () => {
     btnNetworkToggle.disabled = true;
     try {
       if (isNetworkEnabled) {
-        // オンライン→オフラインへ切替
         await disableNetwork(db);
         isNetworkEnabled = false;
         btnNetworkToggle.textContent = 'オンラインに切替';
       } else {
-        // オフライン→オンラインへ切替
         await enableNetwork(db);
         isNetworkEnabled = true;
         btnNetworkToggle.textContent = 'オフラインに切替';
@@ -678,24 +597,15 @@
     }
   });
 
-  /* =========================================================
-   * 10. Firestoreデータ購読（entries / templates）
-   * ========================================================= */
   function initDataSubscriptions(uid) {
-    // 既存の購読があれば解除してから再登録（再ログイン時の重複購読防止）
     if (entriesUnsub) entriesUnsub();
     if (templatesUnsub) templatesUnsub();
 
-    // ---- 記録（entries）：時系列昇順で取得 ----
     const entriesQuery = query(collection(db, 'users', uid, 'entries'), orderBy('timestamp', 'asc'));
-    entriesUnsub = onSnapshot(
-      entriesQuery,
-      { includeMetadataChanges: true }, // メタデータのみの変化（同期完了等）も検知するため
-      (snapshot) => {
+    entriesUnsub = onSnapshot(entriesQuery, { includeMetadataChanges: true }, (snapshot) => {
         allEntries = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderRecordList();
 
-        // 同期バッジの更新：未送信のローカル書き込みがあるかどうか
         if (snapshot.metadata.hasPendingWrites) {
           syncBadge.textContent = '🔄 未同期あり';
           syncBadge.classList.add('bg-yellow-400', 'text-yellow-900');
@@ -712,11 +622,8 @@
       }
     );
 
-    // ---- 定型文（templates） ----
     const templatesQuery = query(collection(db, 'users', uid, 'templates'), orderBy('createdAtLocal', 'asc'));
-    templatesUnsub = onSnapshot(
-      templatesQuery,
-      (snapshot) => {
+    templatesUnsub = onSnapshot(templatesQuery, (snapshot) => {
         allTemplates = { content: [], from: [], to: [] };
         snapshot.docs.forEach((d) => {
           const data = d.data();
@@ -733,12 +640,7 @@
     );
   }
 
-  /* =========================================================
-   * 11. 記録一覧のレンダリング（共通テーブル生成関数）
-   * ---------------------------------------------------------
-   * 同じ年月日が連続する場合は日付を省略し「HH:MM」のみ表示、
-   * 日付が変わる最初の行にだけ時刻の上に「M/D」を表示する。
-   * ========================================================= */
+  // ★行の色分け（work_start=緑, work_end=赤）を追加した表示関数
   function buildTableRowsHtml(entriesAsc, { deletable }) {
     let html = '';
     let previousDateStr = null;
@@ -754,8 +656,12 @@
         ? `<button data-entry-id="${entry.id}" class="btn-delete-entry text-gray-300 hover:text-red-500 text-xs align-top ml-1">✕</button>`
         : '';
 
+      let rowClass = "border-b border-gray-100 align-top";
+      if (entry.entry_type === 'work_start') rowClass += " bg-green-50";
+      if (entry.entry_type === 'work_end') rowClass += " bg-red-50";
+
       html += `
-        <tr class="border-b border-gray-100 align-top">
+        <tr class="${rowClass}">
           <td class="py-2 px-1 text-center">
             ${showDate ? `<div class="text-[10px] text-blue-600 font-bold leading-tight">${escapeHtml(dateStr)}</div>` : ''}
             <div class="text-xs text-gray-700 leading-tight">${escapeHtml(timeStr)}</div>
@@ -778,12 +684,9 @@
     recordListEmpty.classList.add('hidden');
     recordCount.textContent = `${allEntries.length}件`;
     recordListBody.innerHTML = buildTableRowsHtml(allEntries, { deletable: true });
-
-    // 新しい記録が追加された際、リストの末尾（最新）が見えるよう自動スクロール
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
-  // 記録一覧の削除ボタン（イベントデリゲーション）
   recordListBody.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-entry');
     if (!btn || !currentUser) return;
@@ -797,9 +700,6 @@
     }
   });
 
-  /* =========================================================
-   * 12. 記録タブ：日時入力の制御
-   * ========================================================= */
   function initDefaultDatetime() {
     entryDatetimeInput.value = toDatetimeLocalValue(new Date());
     updateDatetimePreview();
@@ -820,9 +720,6 @@
     updateDatetimePreview();
   });
 
-  /* =========================================================
-   * 13. 記録タブ：定型文の挿入（発／受／内容）
-   * ========================================================= */
   function renderTemplateSelects() {
     fillSelect(selectTemplateFrom, allTemplates.from, '定型文');
     fillSelect(selectTemplateTo, allTemplates.to, '定型文');
@@ -844,19 +741,43 @@
   });
   selectTemplateContent.addEventListener('change', () => {
     if (selectTemplateContent.value) {
-      // 内容欄には「追記」する（既存の入力内容を消さない）
       const prefix = entryContent.value && !entryContent.value.endsWith('\n') ? '\n' : '';
       entryContent.value = entryContent.value + prefix + selectTemplateContent.value;
     }
     selectTemplateContent.value = '';
   });
 
-  /* =========================================================
-   * 14. 記録タブ：記録の登録
-   * ========================================================= */
-  btnSubmitEntry.addEventListener('click', async () => {
+  // ★通常記録・勤務打刻の両方で使う共通の保存関数
+  async function saveEntry(from, to, content, entryType) {
     if (!currentUser) return;
+    let timestamp;
+    if (toggleManualDatetime.checked) {
+      if (!entryDatetimeInput.value) {
+        showError('日時を指定してください。');
+        throw new Error('日時未指定');
+      }
+      timestamp = new Date(entryDatetimeInput.value);
+    } else {
+      timestamp = new Date();
+    }
 
+    try {
+      await addDoc(collection(db, 'users', currentUser.uid, 'entries'), {
+        timestamp: timestamp,
+        from: from,
+        to: to,
+        content: content,
+        entry_type: entryType, // 'normal' | 'work_start' | 'work_end'
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error(err);
+      showError('記録の保存に失敗しました：' + (err.message || err));
+      throw err;
+    }
+  }
+
+  btnSubmitEntry.addEventListener('click', async () => {
     const from = entryFrom.value.trim();
     const to = entryTo.value.trim();
     const content = entryContent.value.trim();
@@ -865,44 +786,97 @@
       showError('内容を入力してください。');
       return;
     }
-
-    // 「日時を指定」がオンならピッカーの値を、オフなら常に「今」を使用する
-    let timestamp;
-    if (toggleManualDatetime.checked) {
-      if (!entryDatetimeInput.value) {
-        showError('日時を指定してください。');
-        return;
-      }
-      timestamp = new Date(entryDatetimeInput.value);
-    } else {
-      timestamp = new Date();
-    }
-
     btnSubmitEntry.disabled = true;
     try {
-      await addDoc(collection(db, 'users', currentUser.uid, 'entries'), {
-        timestamp: timestamp,
-        from: from,
-        to: to,
-        content: content,
-        createdAt: serverTimestamp()
-      });
-      // 入力欄をリセット（日時は次回入力のため現在時刻に戻す）
+      await saveEntry(from, to, content, 'normal');
       entryFrom.value = '';
       entryTo.value = '';
       entryContent.value = '';
       initDefaultDatetime();
     } catch (err) {
-      console.error(err);
-      showError('記録の保存に失敗しました：' + (err.message || err));
+      // saveEntry内で既にエラー表示済みなので、ここでは何もしない
     } finally {
       btnSubmitEntry.disabled = false;
     }
   });
 
-  /* =========================================================
-   * 15. 検索／PDFタブ
-   * ========================================================= */
+  // ★勤務打刻ボタン（開始・終了）
+  btnWorkStart.addEventListener('click', async () => {
+    btnWorkStart.disabled = true;
+    try {
+      await saveEntry('', '', '【勤務開始】', 'work_start');
+      initDefaultDatetime();
+    } catch (err) {
+      // エラーは既に表示済み
+    } finally {
+      btnWorkStart.disabled = false;
+    }
+  });
+
+  btnWorkEnd.addEventListener('click', async () => {
+    btnWorkEnd.disabled = true;
+    try {
+      await saveEntry('', '', '【勤務終了】', 'work_end');
+      initDefaultDatetime();
+    } catch (err) {
+      // エラーは既に表示済み
+    } finally {
+      btnWorkEnd.disabled = false;
+    }
+  });
+
+  // ★勤務時間の算出：開始→終了の順にペアにして計算する
+  // hasAnyData を明示的に返すことで、PDF出力時の判定を文字列マッチに依存させない
+  function calculateWorkTime(entries) {
+    const workEvents = entries
+      .filter(e => e.entry_type === 'work_start' || e.entry_type === 'work_end')
+      .sort((a, b) => toDate(a.timestamp).getTime() - toDate(b.timestamp).getTime());
+
+    let currentStart = null;
+    let totalMs = 0;
+    let html = '';
+    let hasAnyData = false;
+
+    workEvents.forEach(e => {
+      if (e.entry_type === 'work_start') {
+        currentStart = e; // 開始が連続した場合は新しい開始で上書き
+      } else if (e.entry_type === 'work_end' && currentStart) {
+        hasAnyData = true;
+        const startDt = toDate(currentStart.timestamp);
+        const endDt = toDate(e.timestamp);
+        const diffMs = endDt.getTime() - startDt.getTime();
+        totalMs += diffMs;
+
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+
+        html += `<div class="border-b border-gray-100 pb-1 mb-1">
+          ${formatDatePart(startDt)} ${formatTimePart(startDt)} 〜 ${formatDatePart(endDt)} ${formatTimePart(endDt)}
+          <span class="ml-2 font-semibold">（${h}時間${m}分）</span>
+        </div>`;
+        currentStart = null;
+      }
+    });
+
+    if (currentStart) {
+      hasAnyData = true;
+      const startDt = toDate(currentStart.timestamp);
+      html += `<div class="text-blue-600 font-semibold border-b border-gray-100 pb-1 mb-1">
+        ${formatDatePart(startDt)} ${formatTimePart(startDt)} 〜 勤務中（未終了）
+      </div>`;
+    }
+
+    if (totalMs > 0) {
+      const totalH = Math.floor(totalMs / 3600000);
+      const totalM = Math.floor((totalMs % 3600000) / 60000);
+      html += `<div class="font-bold text-base mt-2 pt-1 text-gray-800">合計: ${totalH}時間${totalM}分</div>`;
+    } else if (!hasAnyData) {
+      html = '<div class="text-gray-400 text-xs">対象期間内に勤務開始・終了の記録はありません</div>';
+    }
+
+    return { html, hasAnyData };
+  }
+
   function renderSearchResults(results) {
     lastSearchResults = results;
     if (results.length === 0) {
@@ -910,11 +884,16 @@
       searchListEmpty.classList.remove('hidden');
       searchListEmpty.textContent = '該当する記録がありません';
       searchCount.textContent = '';
+      workTimeSummaryCard.classList.add('hidden');
       return;
     }
     searchListEmpty.classList.add('hidden');
     searchCount.textContent = `${results.length}件`;
     searchListBody.innerHTML = buildTableRowsHtml(results, { deletable: false });
+
+    workTimeSummaryCard.classList.remove('hidden');
+    const summary = calculateWorkTime(results);
+    workTimeSummaryContent.innerHTML = summary.html;
   }
 
   btnSearch.addEventListener('click', () => {
@@ -944,7 +923,6 @@
     searchListEmpty.textContent = '検索条件を指定して「検索する」を押してください';
   });
 
-  /* ---------- PDF出力（html2canvas + jsPDF：テキスト直書きしない） ---------- */
   btnExportPdf.addEventListener('click', async () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : allEntries;
     if (target.length === 0) {
@@ -955,12 +933,19 @@
     btnExportPdf.disabled = true;
     btnExportPdf.textContent = '出力中…';
     try {
-      // PDF用テンプレートに、出力日時・表内容を差し込む
       const now = new Date();
       pdfExportDate.textContent = `出力日時：${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${formatTimePart(now)}`;
       pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false });
 
-      // 画面外に配置したテンプレートを一時的に描画対象にしてcanvas化
+      // ★PDFへの勤務時間集計の統合（hasAnyDataフラグで判定：文字列マッチに依存しない）
+      const summary = calculateWorkTime(target);
+      if (summary.hasAnyData) {
+        pdfWorkTimeSummary.style.display = 'block';
+        pdfWorkTimeContent.innerHTML = summary.html;
+      } else {
+        pdfWorkTimeSummary.style.display = 'none';
+      }
+
       const canvas = await html2canvas(pdfExportContainer, { scale: 2, backgroundColor: '#ffffff' });
       const imgData = canvas.toDataURL('image/png');
 
@@ -969,7 +954,6 @@
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // 画像をA4横幅にフィットさせ、縦長の場合は複数ページに分割配置
       const imgWidthMm = pageWidth;
       const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width;
 
@@ -993,13 +977,10 @@
       showError('PDFの出力に失敗しました：' + (err.message || err));
     } finally {
       btnExportPdf.disabled = false;
-      btnExportPdf.textContent = '📑 PDFで出力';
+      btnExportPdf.textContent = '📑 検索結果と集計をPDFで出力';
     }
   });
 
-  /* =========================================================
-   * 16. 設定タブ：定型文の登録・削除
-   * ========================================================= */
   function renderTemplateLists() {
     renderOneTemplateList(listTemplateContent, allTemplates.content);
     renderOneTemplateList(listTemplateFrom, allTemplates.from);
@@ -1020,7 +1001,7 @@
 
   document.querySelectorAll('.btn-template-add').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const type = btn.dataset.type; // content / from / to
+      const type = btn.dataset.type;
       const inputEl = type === 'content' ? newTemplateContent : (type === 'from' ? newTemplateFrom : newTemplateTo);
       const text = inputEl.value.trim();
       if (!text) {
@@ -1032,7 +1013,7 @@
         await addDoc(collection(db, 'users', currentUser.uid, 'templates'), {
           type: type,
           text: text,
-          createdAtLocal: Date.now() // 表示順を安定させるためのローカル生成順序値
+          createdAtLocal: Date.now()
         });
         inputEl.value = '';
       } catch (err) {
@@ -1042,7 +1023,6 @@
     });
   });
 
-  // 定型文削除（イベントデリゲーション：3リスト共通）
   [listTemplateContent, listTemplateFrom, listTemplateTo].forEach((ulEl) => {
     ulEl.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-template-delete');
@@ -1056,15 +1036,11 @@
     });
   });
 
-  /* =========================================================
-   * 17. 設定タブ：JSONエクスポート／全削除
-   * ========================================================= */
   btnExportJson.addEventListener('click', () => {
     if (allEntries.length === 0) {
       showError('エクスポートできる記録がありません。');
       return;
     }
-    // Firestore Timestampをそのままだとシリアライズできないため文字列化しておく
     const exportData = allEntries.map((entry) => ({
       ...entry,
       timestamp: toDate(entry.timestamp).toISOString()
@@ -1090,7 +1066,6 @@
     if (!confirm('最終確認：本当にすべての記録を削除してよろしいですか？')) return;
 
     try {
-      // 各ドキュメントを個別に削除（大量データの場合は時間がかかる場合がある）
       await Promise.all(allEntries.map((entry) => deleteDoc(doc(db, 'users', currentUser.uid, 'entries', entry.id))));
     } catch (err) {
       console.error(err);
@@ -1098,9 +1073,6 @@
     }
   });
 
-  /* =========================================================
-   * 18. Service Worker 登録（PWA対応）
-   * ========================================================= */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./service-worker.js').catch((err) => {
