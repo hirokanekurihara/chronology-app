@@ -403,9 +403,10 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  // ★変更：writeBatch を追加インポート（一括削除に使用）
   import {
     initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-    collection, doc, addDoc, setDoc, deleteDoc, getDocs,
+    collection, doc, addDoc, setDoc, deleteDoc, getDocs, writeBatch,
     onSnapshot, query, orderBy, enableNetwork, disableNetwork, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -421,12 +422,9 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
-  // ★変更：古い enableMultiTabIndexedDbPersistence を廃止し、
-  // initializeFirestore + persistentSingleTabManager(推奨API)に変更。
-  // forceOwnership: true にすることで、今アクティブなタブ/ウィンドウが
-  // 常に最優先で接続の主導権を握るようにし、バックグラウンドに回った
-  // 古いタブが接続を握ったまま残ってしまう状況（terminatedエラーの
-  // 一因になりやすい状態）を防ぐ。
+  // 引き続き「今アクティブなタブが常に優先」される設定を使用します。
+  // ★重要：同じ端末で複数タブ／ホーム画面アイコンとSafariを同時に開くと、
+  // この設定が原因で片方の接続が強制終了されます。1つの入口に統一してください。
   const db = initializeFirestore(app, {
     localCache: persistentLocalCache({
       tabManager: persistentSingleTabManager({ forceOwnership: true })
@@ -544,20 +542,56 @@
   }
   errorBannerClose.addEventListener('click', () => errorBanner.classList.add('hidden'));
 
-  // ★追加：Firestoreへの書き込みを安全に行うラッパー関数。
-  // "already been terminated"（接続が終了済み）エラーが出た場合、
-  // 同じ接続に再度書き込もうとしても必ず同じ結果になるため、
-  // 再試行はせず、ページ全体を再読み込みして新しい接続を作り直す。
+  // ★追加：「terminated（接続終了済み）」エラーかどうかを判定する共通ヘルパー
+  function isTerminatedError(err) {
+    const msg = err && err.message ? err.message : String(err);
+    return msg.includes('already been terminated');
+  }
+
+  // ★追加：terminatedエラー発生時の共通処理（多重発火を防ぎつつ自動リロード）
+  let recoveringFromTermination = false;
+  function handleTerminated() {
+    if (recoveringFromTermination) return;
+    recoveringFromTermination = true;
+    showError('内部の接続が古くなっているため、画面を自動的に再読み込みします。再読み込み後、もう一度操作をお試しください。');
+    setTimeout(() => window.location.reload(), 1500);
+  }
+
+  // ★変更：addDoc / deleteDoc / setDoc すべてに同じ安全ラッパーを適用
   async function addDocSafe(colRef, data) {
-    try {
-      return await addDoc(colRef, data);
-    } catch (err) {
-      const msg = err && err.message ? err.message : String(err);
-      if (msg.includes('already been terminated')) {
-        showError('内部の接続が古くなっているため、画面を自動的に再読み込みします。再読み込み後、もう一度お試しください。');
-        setTimeout(() => window.location.reload(), 1200);
-      }
-      throw err;
+    try { return await addDoc(colRef, data); }
+    catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
+  }
+  async function deleteDocSafe(docRef) {
+    try { return await deleteDoc(docRef); }
+    catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
+  }
+  async function setDocSafe(docRef, data, options) {
+    try { return await setDoc(docRef, data, options || {}); }
+    catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
+  }
+
+  // ★追加：コレクション内の全ドキュメントを、500件ごとの一括処理（バッチ）でまとめて削除する
+  async function clearCollectionBatch(colRef) {
+    const snap = await getDocs(colRef);
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 500) {
+      const chunk = docs.slice(i, i + 500);
+      const batch = writeBatch(db);
+      chunk.forEach(d => batch.delete(d.ref));
+      try { await batch.commit(); }
+      catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
+    }
+  }
+
+  // ★追加：記録一覧（entries）を500件ごとの一括処理で削除する専用関数
+  async function deleteEntriesBatch(entries) {
+    for (let i = 0; i < entries.length; i += 500) {
+      const chunk = entries.slice(i, i + 500);
+      const batch = writeBatch(db);
+      chunk.forEach(e => batch.delete(doc(db, WS_PATH, WS_ID, 'entries', e.id)));
+      try { await batch.commit(); }
+      catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
     }
   }
 
@@ -583,9 +617,8 @@
 
   btnGoogleSignin.addEventListener('click', async () => {
     signinError.classList.add('hidden');
-    try {
-      await signInWithRedirect(auth, googleProvider);
-    } catch(err) {
+    try { await signInWithRedirect(auth, googleProvider); }
+    catch(err) {
       signinError.textContent = 'サインインに失敗しました：' + (err.message || err);
       signinError.classList.remove('hidden');
     }
@@ -648,6 +681,7 @@
         syncBadge.classList.toggle('bg-white/20', !snap.metadata.hasPendingWrites);
       },
       (err) => {
+        if (isTerminatedError(err)) { handleTerminated(); return; }
         if (err.code === 'permission-denied') {
           showError('アクセス権限がありません。Firebaseのセキュリティルールに、あなたのメールアドレスが正しく追加されているか確認してください。');
         } else {
@@ -667,19 +701,19 @@
         renderTemplateSelects();
         renderTemplateLists();
       },
-      (err) => console.warn('定型文の取得に失敗しました：', err)
+      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('定型文の取得に失敗しました：', err); }
     );
 
     teamsUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'teams'), orderBy('createdAtLocal','asc')),
       (snap) => { allTeams = snap.docs.map(d => ({id:d.id,...d.data()})); renderTeamUI(); },
-      (err) => console.warn('チーム情報の取得に失敗しました：', err)
+      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('チーム情報の取得に失敗しました：', err); }
     );
 
     settingsUnsub = onSnapshot(
       doc(db, WS_PATH, WS_ID, 'app_settings', 'main'),
       (snap) => { activeTeamId = snap.exists() ? (snap.data().active_team_id || null) : null; renderTeamUI(); },
-      (err) => console.warn('設定の取得に失敗しました：', err)
+      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('設定の取得に失敗しました：', err); }
     );
   }
 
@@ -714,12 +748,13 @@
       `).join('');
   }
 
+  // ★変更：setDocSafeを使用
   selectActiveTeam.addEventListener('change', async () => {
     if (!currentUser) return;
     try {
-      await setDoc(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'),
+      await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'),
         { active_team_id: selectActiveTeam.value || null }, { merge: true });
-    } catch(err) { showError('チームの切り替えに失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) showError('チームの切り替えに失敗しました：' + (err.message||err)); }
   });
 
   btnAddTeam.addEventListener('click', async () => {
@@ -731,19 +766,20 @@
       await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name, members, createdAtLocal: Date.now() });
       newTeamName.value=''; newTeamMembers.value='';
       showSuccess('チームを追加しました。');
-    } catch(err) { showError('チームの追加に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) showError('チームの追加に失敗しました：' + (err.message||err)); }
   });
 
+  // ★変更：deleteDocSafe / setDocSafeを使用
   listTeams.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-team');
     if (!btn || !currentUser) return;
     if (!confirm('このチームを削除しますか？')) return;
     try {
-      await deleteDoc(doc(db, WS_PATH, WS_ID, 'teams', btn.dataset.teamId));
+      await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', btn.dataset.teamId));
       if (btn.dataset.teamId === activeTeamId) {
-        await setDoc(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: null }, { merge: true });
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: null }, { merge: true });
       }
-    } catch(err) { showError('チームの削除に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) showError('チームの削除に失敗しました：' + (err.message||err)); }
   });
 
   function buildTableRowsHtml(entriesAsc, { deletable }) {
@@ -781,12 +817,13 @@
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
+  // ★変更：deleteDocSafeを使用
   recordListBody.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-entry');
     if (!btn || !currentUser) return;
     if (!confirm('この記録を削除しますか？')) return;
-    try { await deleteDoc(doc(db, WS_PATH, WS_ID, 'entries', btn.dataset.entryId)); }
-    catch(err) { showError('記録の削除に失敗しました：' + (err.message||err)); }
+    try { await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'entries', btn.dataset.entryId)); }
+    catch(err) { if(!isTerminatedError(err)) showError('記録の削除に失敗しました：' + (err.message||err)); }
   });
 
   function initDefaultDatetime() { entryDatetimeInput.value = toDatetimeLocalValue(new Date()); updateDatetimePreview(); }
@@ -839,15 +876,16 @@
       if (!text) { showError('登録する定型文を入力してください。'); return; }
       if (!currentUser) return;
       try { await addDocSafe(collection(db, WS_PATH, WS_ID, 'templates'), { type, text, createdAtLocal: Date.now() }); inputEl.value=''; }
-      catch(err) { showError('定型文の登録に失敗しました：' + (err.message||err)); }
+      catch(err) { if(!isTerminatedError(err)) showError('定型文の登録に失敗しました：' + (err.message||err)); }
     });
   });
+  // ★変更：deleteDocSafeを使用
   [listTemplateContent, listTemplateFrom, listTemplateTo].forEach(ul => {
     ul.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-template-delete');
       if (!btn || !currentUser) return;
-      try { await deleteDoc(doc(db, WS_PATH, WS_ID, 'templates', btn.dataset.id)); }
-      catch(err) { showError('定型文の削除に失敗しました：' + (err.message||err)); }
+      try { await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'templates', btn.dataset.id)); }
+      catch(err) { if(!isTerminatedError(err)) showError('定型文の削除に失敗しました：' + (err.message||err)); }
     });
   });
 
@@ -871,20 +909,20 @@
       await saveEntry(from, to, content, 'normal');
       entryFrom.value=''; entryTo.value=''; entryContent.value='';
       initDefaultDatetime();
-    } catch(err) { if(err.message !== '日時未指定') showError('記録の保存に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnSubmitEntry.disabled = false; }
   });
 
   btnWorkStart.addEventListener('click', async () => {
     btnWorkStart.disabled = true;
     try { await saveEntry('','','【勤務開始】','work_start'); initDefaultDatetime(); }
-    catch(err) { if(err.message !== '日時未指定') showError('記録の保存に失敗しました：' + (err.message||err)); }
+    catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnWorkStart.disabled = false; }
   });
   btnWorkEnd.addEventListener('click', async () => {
     btnWorkEnd.disabled = true;
     try { await saveEntry('','','【勤務終了】','work_end'); initDefaultDatetime(); }
-    catch(err) { if(err.message !== '日時未指定') showError('記録の保存に失敗しました：' + (err.message||err)); }
+    catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnWorkEnd.disabled = false; }
   });
 
@@ -1021,6 +1059,7 @@
     showSuccess('全体バックアップを保存しました。');
   });
 
+  // ★変更：既存データの削除をclearCollectionBatch（一括処理）に変更
   btnRestoreTrigger.addEventListener('click', () => inputRestoreFile.click());
   inputRestoreFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreFile.value = '';
@@ -1031,10 +1070,11 @@
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.entries)) { showError('このファイルはバックアップ形式として認識できません。'); return; }
       btnRestoreTrigger.textContent = '既存データを削除中…';
-      const [entriesSnap, templatesSnap, teamsSnap] = await Promise.all([
-        getDocs(collection(db, WS_PATH, WS_ID, 'entries')), getDocs(collection(db, WS_PATH, WS_ID, 'templates')), getDocs(collection(db, WS_PATH, WS_ID, 'teams'))
+      await Promise.all([
+        clearCollectionBatch(collection(db, WS_PATH, WS_ID, 'entries')),
+        clearCollectionBatch(collection(db, WS_PATH, WS_ID, 'templates')),
+        clearCollectionBatch(collection(db, WS_PATH, WS_ID, 'teams'))
       ]);
-      await Promise.all([ ...entriesSnap.docs.map(d => deleteDoc(d.ref)), ...templatesSnap.docs.map(d => deleteDoc(d.ref)), ...teamsSnap.docs.map(d => deleteDoc(d.ref)) ]);
       const total = (data.entries||[]).length; let done = 0;
       for (const entry of (data.entries||[])) {
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', createdAt: serverTimestamp() });
@@ -1048,9 +1088,9 @@
         const ref = await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name: team.name, members: team.members||'', createdAtLocal: Date.now() });
         if (data.active_team_name && team.name === data.active_team_name) restoredActiveTeamId = ref.id;
       }
-      await setDoc(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: restoredActiveTeamId }, { merge: true });
+      await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: restoredActiveTeamId }, { merge: true });
       showSuccess(`全体バックアップの復元が完了しました（記録${total}件）。`);
-    } catch(err) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); } }
     finally { btnRestoreTrigger.disabled = false; btnRestoreTrigger.textContent = '⬆️ 全体バックアップから復元（すべて上書き）'; }
   });
 
@@ -1068,6 +1108,7 @@
     showSuccess(`クロノロ${allEntries.length}件を保存しました。`);
   });
 
+  // ★変更：既存クロノロの削除をclearCollectionBatch（一括処理）に変更
   btnRestoreEntriesTrigger.addEventListener('click', () => inputRestoreEntriesFile.click());
   inputRestoreEntriesFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreEntriesFile.value = '';
@@ -1077,8 +1118,8 @@
     try {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.entries)) { showError('このファイルはクロノロのバックアップとして認識できません。'); return; }
-      const entriesSnap = await getDocs(collection(db, WS_PATH, WS_ID, 'entries'));
-      await Promise.all(entriesSnap.docs.map(d => deleteDoc(d.ref)));
+      btnRestoreEntriesTrigger.textContent = '既存のクロノロを削除中…';
+      await clearCollectionBatch(collection(db, WS_PATH, WS_ID, 'entries'));
       const total = data.entries.length; let done = 0;
       for (const entry of data.entries) {
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), {
@@ -1087,18 +1128,28 @@
         done++; btnRestoreEntriesTrigger.textContent = `復元中…（${done}/${total}）`;
       }
       showSuccess(`クロノロ${total}件を復元しました。`);
-    } catch(err) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); } }
     finally { btnRestoreEntriesTrigger.disabled = false; btnRestoreEntriesTrigger.textContent = '⬆️ クロノロだけ復元'; }
   });
 
+  // ★変更：一括処理（バッチ）に変更し、処理中はボタンを無効化してラベルを表示
   btnDeleteAll.addEventListener('click', async () => {
     if (allEntries.length === 0) { showError('削除できるクロノロがありません。'); return; }
     if (!confirm(`クロノロ全${allEntries.length}件を削除します。\n定型文・チーム情報はそのまま残ります。\nこの操作は取り消せません。本当に削除しますか？`)) return;
     if (!confirm('最終確認：本当にすべてのクロノロを削除してよろしいですか？')) return;
+
+    const originalText = btnDeleteAll.textContent;
+    btnDeleteAll.disabled = true;
+    btnDeleteAll.textContent = '削除中…';
     try {
-      await Promise.all(allEntries.map(e => deleteDoc(doc(db, WS_PATH, WS_ID, 'entries', e.id))));
+      await deleteEntriesBatch(allEntries);
       showSuccess('クロノロを削除しました。定型文・チームはそのまま残っています。');
-    } catch(err) { showError('削除に失敗しました：' + (err.message||err)); }
+    } catch(err) {
+      if (!isTerminatedError(err)) showError('削除に失敗しました：' + (err.message||err));
+    } finally {
+      btnDeleteAll.disabled = false;
+      btnDeleteAll.textContent = originalText;
+    }
   });
 
   if ('serviceWorker' in navigator) {
