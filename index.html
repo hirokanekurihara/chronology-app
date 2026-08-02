@@ -81,19 +81,7 @@
 
     <section id="panel-record" class="tab-panel p-3 space-y-4">
 
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>⏱️</span>勤務打刻</h2>
-        <div class="flex gap-2">
-          <button id="btn-work-start" type="button" class="btn-base flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold py-2 active:bg-green-100 shadow-sm">
-            🟢 勤務開始を記録
-          </button>
-          <button id="btn-work-end" type="button" class="btn-base flex-1 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold py-2 active:bg-red-100 shadow-sm">
-            🔴 勤務終了を記録
-          </button>
-        </div>
-        <p class="text-[11px] text-gray-400">※「日時を指定」がオンの場合は、その日時で記録されます（押し忘れ対応）</p>
-      </div>
-
+      <!-- ★変更：新しい記録フォームを一番上に配置 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📝</span>新しい記録</h2>
         <div class="space-y-2">
@@ -156,6 +144,7 @@
         </button>
       </div>
 
+      <!-- ★変更：記録一覧を真ん中に配置 -->
       <div class="bg-white rounded-xl shadow-sm p-3">
         <div class="flex items-center justify-between mb-2 px-1">
           <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📋</span>記録一覧（共有）</h2>
@@ -179,6 +168,21 @@
           <p id="record-list-empty" class="text-center text-xs text-gray-400 py-6">記録はまだありません</p>
         </div>
       </div>
+
+      <!-- ★変更：勤務打刻を一番下に移動 -->
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>⏱️</span>勤務打刻</h2>
+        <div class="flex gap-2">
+          <button id="btn-work-start" type="button" class="btn-base flex-1 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold py-2 active:bg-green-100 shadow-sm">
+            🟢 勤務開始を記録
+          </button>
+          <button id="btn-work-end" type="button" class="btn-base flex-1 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold py-2 active:bg-red-100 shadow-sm">
+            🔴 勤務終了を記録
+          </button>
+        </div>
+        <p class="text-[11px] text-gray-400">※「日時を指定」がオンの場合は、その日時で記録されます（押し忘れ対応）</p>
+      </div>
+
     </section>
 
     <section id="panel-search" class="tab-panel hidden-panel p-3 space-y-4">
@@ -284,17 +288,10 @@
         </div>
       </div>
 
+      <!-- ★変更：定型文の順番を「発→受→内容」に変更 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-4">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
-        <div>
-          <p class="text-xs font-semibold text-gray-500 mb-1">内容の定型文</p>
-          <div class="flex gap-2">
-            <input id="new-template-content" type="text" placeholder="新しい定型文（内容）"
-              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button data-type="content" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
-          </div>
-          <ul id="list-template-content" class="mt-2 space-y-1"></ul>
-        </div>
+
         <div>
           <p class="text-xs font-semibold text-gray-500 mb-1">発（From）の定型文</p>
           <div class="flex gap-2">
@@ -304,6 +301,7 @@
           </div>
           <ul id="list-template-from" class="mt-2 space-y-1"></ul>
         </div>
+
         <div>
           <p class="text-xs font-semibold text-gray-500 mb-1">受（To）の定型文</p>
           <div class="flex gap-2">
@@ -312,6 +310,16 @@
             <button data-type="to" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
           </div>
           <ul id="list-template-to" class="mt-2 space-y-1"></ul>
+        </div>
+
+        <div>
+          <p class="text-xs font-semibold text-gray-500 mb-1">内容の定型文</p>
+          <div class="flex gap-2">
+            <input id="new-template-content" type="text" placeholder="新しい定型文（内容）"
+              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button data-type="content" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+          </div>
+          <ul id="list-template-content" class="mt-2 space-y-1"></ul>
         </div>
       </div>
 
@@ -410,7 +418,6 @@
   const db = getFirestore(app);
   const googleProvider = new GoogleAuthProvider();
 
-  // ★共有ワークスペースの固定パス（全員がここを見に行くことで、データが共有されます）
   const WS_PATH = 'workspaces';
   const WS_ID = 'shared';
 
@@ -579,7 +586,6 @@
     finally { btnNetworkToggle.disabled = false; }
   });
 
-  // ★uidに依存せず、常に共有ワークスペースのパスを購読する
   function initDataSubscriptions() {
     if (entriesUnsub) entriesUnsub();
     if (templatesUnsub) templatesUnsub();
@@ -598,7 +604,6 @@
         syncBadge.classList.toggle('bg-white/20', !snap.metadata.hasPendingWrites);
       },
       (err) => {
-        // ★権限エラーの場合は、メール許可リストの設定漏れを示す専用メッセージを出す
         if (err.code === 'permission-denied') {
           showError('アクセス権限がありません。Firebaseのセキュリティルールに、あなたのメールアドレスが正しく追加されているか確認してください。');
         } else {
