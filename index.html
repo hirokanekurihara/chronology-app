@@ -27,17 +27,7 @@
   .toggle-knob { width: 20px; height: 20px; transition: transform 0.2s ease-in-out; }
   input:checked + .toggle-track .toggle-knob { transform: translateX(20px); }
   input:checked + .toggle-track { background-color: #2563eb; }
-
-  /* ★変更：PDF描画用テンプレート（ブロックごとに分離して個別に画像化する） */
-  #pdf-render-root {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    width: 720px;
-    background: #ffffff;
-    font-family: 'Noto Sans JP', sans-serif;
-    color: #1f2937;
-  }
+  #pdf-render-root { position: absolute; left: -9999px; top: 0; width: 720px; background: #ffffff; font-family: 'Noto Sans JP', sans-serif; color: #1f2937; }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
@@ -74,8 +64,12 @@
         </button>
       </div>
     </div>
-    <div id="active-team-bar" class="hidden px-3 pb-2 text-xs text-blue-100">
-      <span id="active-team-bar-text"></span>
+    <div class="bg-blue-800 px-3 py-1.5 flex items-center justify-between text-white text-xs shadow-inner">
+      <span class="font-semibold whitespace-nowrap mr-2">表示・入力する班:</span>
+      <select id="header-team-select" class="flex-1 bg-blue-700 border border-blue-500 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 truncate">
+        <option value="">（班を選択してください）</option>
+        <option value="ALL">すべての班を表示（入力不可）</option>
+      </select>
     </div>
   </header>
 
@@ -155,7 +149,7 @@
 
       <div class="bg-white rounded-xl shadow-sm p-3">
         <div class="flex items-center justify-between mb-2 px-1">
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📋</span>記録一覧（共有）</h2>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📋</span>記録一覧</h2>
           <span id="record-count" class="text-xs text-gray-400"></span>
         </div>
         <div id="record-list-scroll" class="entries-scroll max-h-[55vh] overflow-y-auto border border-gray-100 rounded-lg">
@@ -173,7 +167,7 @@
             </thead>
             <tbody id="record-list-body"></tbody>
           </table>
-          <p id="record-list-empty" class="text-center text-xs text-gray-400 py-6">記録はまだありません</p>
+          <p id="record-list-empty" class="text-center text-xs text-gray-400 py-6">上部のメニューから班を選択してください</p>
         </div>
       </div>
 
@@ -263,30 +257,21 @@
       </div>
 
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>チーム情報（PDFに反映されます）</h2>
-        <div>
-          <label class="text-xs font-semibold text-gray-500">現在使用中のチーム</label>
-          <select id="select-active-team" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">（チームを選択してください）</option>
-          </select>
-        </div>
-        <div id="active-team-detail" class="hidden bg-blue-50 rounded-lg p-3 text-sm">
-          <p class="font-semibold text-blue-800" id="active-team-detail-name"></p>
-          <p class="text-blue-600 text-xs mt-1" id="active-team-detail-members"></p>
-        </div>
+        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・削除</h2>
+        <p class="text-xs text-gray-500">※表示・入力する班の切り替えは、画面一番上のメニューで行ってください。</p>
         <div class="border-t pt-3 space-y-2">
-          <p class="text-xs font-semibold text-gray-500">新しいチームを追加</p>
-          <input id="new-team-name" type="text" placeholder="チーム名（例：第1救護班）"
+          <p class="text-xs font-semibold text-gray-500">新しい班を追加</p>
+          <input id="new-team-name" type="text" placeholder="班の名前（例：第1救護班A）"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <input id="new-team-members" type="text" placeholder="メンバー（例：山田太郎、鈴木花子）"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <button id="btn-add-team" type="button"
             class="btn-base w-full bg-blue-600 text-white rounded-lg font-semibold py-2 active:bg-blue-700">
-            ＋ チームを追加
+            ＋ 班を追加
           </button>
         </div>
         <div class="border-t pt-3">
-          <p class="text-xs font-semibold text-gray-500 mb-2">登録済みチーム</p>
+          <p class="text-xs font-semibold text-gray-500 mb-2">登録済みの班（色は一覧・PDFと連動しています）</p>
           <ul id="list-teams" class="space-y-1"></ul>
         </div>
       </div>
@@ -324,7 +309,7 @@
 
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
-        <p class="text-xs text-gray-500">救護班や活動が変わるときは、ここでクロノロだけを保存・削除・復元します。定型文・チーム情報には影響しません。</p>
+        <p class="text-xs text-gray-500">※画面一番上で選択している班のクロノロだけが対象になります。</p>
 
         <button id="btn-backup-entries" type="button"
           class="btn-base w-full bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold py-2.5 active:bg-blue-100">
@@ -339,13 +324,13 @@
 
         <button id="btn-delete-all" type="button"
           class="btn-base w-full bg-orange-50 text-orange-700 border border-orange-200 rounded-lg font-semibold py-2.5 active:bg-orange-100">
-          🗑 クロノロだけを削除する（定型文・チームは残ります）
+          🗑 クロノロだけを削除する（定型文・班は残ります）
         </button>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
-        <p class="text-xs text-gray-500">記録・定型文・チーム情報をすべてまとめて保存・復元します。</p>
+        <p class="text-xs text-gray-500">記録・定型文・班情報をすべてまとめて保存・復元します。</p>
 
         <button id="btn-backup" type="button"
           class="btn-base w-full bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold py-2.5 active:bg-indigo-100">
@@ -381,13 +366,7 @@
   </nav>
 </div>
 
-<!-- ============================================================
-     ★変更：PDF描画用テンプレート（ヘッダー・勤務時間・表ヘッダー・表本体を
-     ブロックごとに分離し、個別に画像化してから正確な位置で組み立てる）
-     ============================================================ -->
 <div id="pdf-render-root">
-
-  <!-- ①タイトル・チーム情報・出力日時 -->
   <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
     <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
     <div id="pdf-team-header" style="display:none; margin-bottom:8px; padding:8px 12px; background:#eff6ff; border-left:4px solid #2563eb;">
@@ -396,14 +375,10 @@
     </div>
     <div id="pdf-export-date" style="font-size:11px; color:#6b7280;"></div>
   </div>
-
-  <!-- ②勤務時間集計（存在する場合のみ表示） -->
   <div id="pdf-worktime-section" style="display:none; margin:0 20px 14px 20px; padding:10px 14px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:4px;">
     <div style="font-size:13px; font-weight:bold; margin:0 0 6px 0;">勤務時間集計</div>
     <div id="pdf-work-time-content" style="font-size:11px; line-height:1.7;"></div>
   </div>
-
-  <!-- ③表ヘッダー行（各ページの先頭に繰り返し描画するためのテンプレート） -->
   <div id="pdf-table-header-section" style="padding:0 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
       <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
@@ -417,8 +392,6 @@
       </thead>
     </table>
   </div>
-
-  <!-- ④表本体（全行。1回だけまとめて画像化し、行の境界で正確にスライスする） -->
   <div id="pdf-table-body-section" style="padding:0 20px 20px 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
       <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
@@ -448,9 +421,7 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentSingleTabManager({ forceOwnership: true })
-    })
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({ forceOwnership: true }) })
   });
 
   const googleProvider = new GoogleAuthProvider();
@@ -470,8 +441,7 @@
   const successBannerText = el('success-banner-text');
   const syncBadge = el('sync-badge');
   const btnNetworkToggle = el('btn-network-toggle');
-  const activeTeamBar = el('active-team-bar');
-  const activeTeamBarText = el('active-team-bar-text');
+  const headerTeamSelect = el('header-team-select');
   const navButtons = document.querySelectorAll('.nav-btn');
   const tabPanels = document.querySelectorAll('.tab-panel');
 
@@ -508,10 +478,6 @@
   const userPhoto = el('user-photo');
   const userName = el('user-name');
   const userEmail = el('user-email');
-  const selectActiveTeam = el('select-active-team');
-  const activeTeamDetail = el('active-team-detail');
-  const activeTeamDetailName = el('active-team-detail-name');
-  const activeTeamDetailMembers = el('active-team-detail-members');
   const newTeamName = el('new-team-name');
   const newTeamMembers = el('new-team-members');
   const btnAddTeam = el('btn-add-team');
@@ -532,7 +498,6 @@
   const btnDeleteAll = el('btn-delete-all');
   const btnSignout = el('btn-signout');
 
-  // ★変更：PDF描画用要素（ブロック分離版）
   const pdfHeaderSection = el('pdf-header-section');
   const pdfTeamHeader = el('pdf-team-header');
   const pdfTeamName = el('pdf-team-name');
@@ -545,13 +510,29 @@
   const pdfExportBody = el('pdf-export-body');
 
   let currentUser = null;
-  let entriesUnsub = null, templatesUnsub = null, teamsUnsub = null, settingsUnsub = null;
+  let entriesUnsub = null, templatesUnsub = null, teamsUnsub = null;
   let allEntries = [];
   let allTemplates = { content: [], from: [], to: [] };
   let allTeams = [];
-  let activeTeamId = null;
+  let activeTeamId = localStorage.getItem('chronolo_active_team') || '';
   let isNetworkEnabled = true;
   let lastSearchResults = [];
+
+  // ★班ごとの色パレット（登録順に自動割当。7班目以降は先頭に戻って循環）
+  // 勤務開始(緑)・勤務終了(赤)とは絶対に被らない色だけを選んでいます。
+  const TEAM_COLORS = [
+    { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', divBg: '#dbeafe' }, // 青
+    { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', divBg: '#fef3c7' }, // 橙
+    { bg: '#f5f3ff', border: '#c4b5fd', text: '#5b21b6', divBg: '#ede9fe' }, // 紫
+    { bg: '#ecfeff', border: '#67e8f9', text: '#155e75', divBg: '#cffafe' }, // 水色
+    { bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d', divBg: '#fce7f3' }, // ピンク
+    { bg: '#f8fafc', border: '#cbd5e1', text: '#334155', divBg: '#e2e8f0' }  // グレー
+  ];
+  function getTeamColor(teamId) {
+    const idx = allTeams.findIndex(t => t.id === teamId);
+    if (idx < 0) return null;
+    return TEAM_COLORS[idx % TEAM_COLORS.length];
+  }
 
   function showError(message) {
     errorBannerText.textContent = message;
@@ -634,10 +615,7 @@
   btnGoogleSignin.addEventListener('click', async () => {
     signinError.classList.add('hidden');
     try { await signInWithRedirect(auth, googleProvider); }
-    catch(err) {
-      signinError.textContent = 'サインインに失敗しました：' + (err.message || err);
-      signinError.classList.remove('hidden');
-    }
+    catch(err) { signinError.textContent = 'サインインに失敗しました：' + (err.message || err); signinError.classList.remove('hidden'); }
   });
 
   getRedirectResult(auth).catch((err) => {
@@ -662,9 +640,9 @@
       initDefaultDatetime();
     } else {
       currentUser = null;
-      [entriesUnsub, templatesUnsub, teamsUnsub, settingsUnsub].forEach(u => { if(u) u(); });
-      entriesUnsub = templatesUnsub = teamsUnsub = settingsUnsub = null;
-      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = []; activeTeamId = null;
+      [entriesUnsub, templatesUnsub, teamsUnsub].forEach(u => { if(u) u(); });
+      entriesUnsub = templatesUnsub = teamsUnsub = null;
+      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = [];
       appRoot.classList.add('hidden'); appRoot.classList.remove('flex');
       signinOverlay.classList.remove('hidden');
     }
@@ -683,7 +661,6 @@
     if (entriesUnsub) entriesUnsub();
     if (templatesUnsub) templatesUnsub();
     if (teamsUnsub) teamsUnsub();
-    if (settingsUnsub) settingsUnsub();
 
     entriesUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'entries'), orderBy('timestamp','asc')),
@@ -698,11 +675,8 @@
       },
       (err) => {
         if (isTerminatedError(err)) { handleTerminated(); return; }
-        if (err.code === 'permission-denied') {
-          showError('アクセス権限がありません。Firebaseのセキュリティルールに、あなたのメールアドレスが正しく追加されているか確認してください。');
-        } else {
-          showError('記録の取得に失敗しました：' + (err.message||err));
-        }
+        if (err.code === 'permission-denied') { showError('アクセス権限がありません。Firebaseのセキュリティルールに、あなたのメールアドレスが正しく追加されているか確認してください。'); }
+        else { showError('記録の取得に失敗しました：' + (err.message||err)); }
       }
     );
 
@@ -710,10 +684,7 @@
       query(collection(db, WS_PATH, WS_ID, 'templates'), orderBy('createdAtLocal','asc')),
       (snap) => {
         allTemplates = { content: [], from: [], to: [] };
-        snap.docs.forEach(d => {
-          const data = d.data();
-          if (allTemplates[data.type]) allTemplates[data.type].push({id:d.id, text:data.text||''});
-        });
+        snap.docs.forEach(d => { const data = d.data(); if (allTemplates[data.type]) allTemplates[data.type].push({id:d.id, text:data.text||''}); });
         renderTemplateSelects();
         renderTemplateLists();
       },
@@ -723,111 +694,148 @@
     teamsUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'teams'), orderBy('createdAtLocal','asc')),
       (snap) => { allTeams = snap.docs.map(d => ({id:d.id,...d.data()})); renderTeamUI(); },
-      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('チーム情報の取得に失敗しました：', err); }
+      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('班情報の取得に失敗しました：', err); }
     );
+  }
 
-    settingsUnsub = onSnapshot(
-      doc(db, WS_PATH, WS_ID, 'app_settings', 'main'),
-      (snap) => { activeTeamId = snap.exists() ? (snap.data().active_team_id || null) : null; renderTeamUI(); },
-      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('設定の取得に失敗しました：', err); }
-    );
+  function getFilteredEntries(entries) {
+    if (!activeTeamId) return [];
+    if (activeTeamId === 'ALL') return entries;
+    return entries.filter(e => e.team_id === activeTeamId);
   }
 
   function renderTeamUI() {
-    const prev = selectActiveTeam.value;
-    selectActiveTeam.innerHTML = '<option value="">（チームを選択してください）</option>' +
+    headerTeamSelect.innerHTML = '<option value="">（班を選択してください）</option><option value="ALL">すべての班を表示（入力不可）</option>' +
       allTeams.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
-    selectActiveTeam.value = activeTeamId || prev || '';
 
-    const active = allTeams.find(t => t.id === activeTeamId);
-    if (active) {
-      activeTeamDetail.classList.remove('hidden');
-      activeTeamDetailName.textContent = active.name;
-      activeTeamDetailMembers.textContent = 'メンバー：' + (active.members || '（未設定）');
-      activeTeamBar.classList.remove('hidden');
-      activeTeamBarText.textContent = `使用中チーム：${active.name}`;
-    } else {
-      activeTeamDetail.classList.add('hidden');
-      activeTeamBar.classList.add('hidden');
+    if (activeTeamId !== 'ALL' && activeTeamId !== '' && !allTeams.find(t => t.id === activeTeamId)) {
+      activeTeamId = '';
+      localStorage.removeItem('chronolo_active_team');
     }
+    headerTeamSelect.value = activeTeamId;
 
     listTeams.innerHTML = allTeams.length === 0
-      ? '<li class="text-xs text-gray-400">登録済みのチームはありません</li>'
-      : allTeams.map(t => `
-        <li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm ${t.id === activeTeamId ? 'ring-2 ring-blue-400' : ''}">
-          <div class="min-w-0 mr-2">
-            <p class="font-semibold truncate">${escapeHtml(t.name)}${t.id === activeTeamId ? ' <span class="text-blue-500 text-xs font-normal">（使用中）</span>' : ''}</p>
-            <p class="text-xs text-gray-400 truncate">${escapeHtml(t.members||'')}</p>
-          </div>
-          <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-xs font-bold shrink-0">削除</button>
-        </li>
-      `).join('');
+      ? '<li class="text-xs text-gray-400">登録済みの班はありません</li>'
+      : allTeams.map((t) => {
+          const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' };
+          return `<li class="flex items-center justify-between rounded-lg px-3 py-2 text-sm ${t.id === activeTeamId ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
+            <div class="min-w-0 mr-2">
+              <p class="font-semibold truncate" style="color:${c.text};">${escapeHtml(t.name)}${t.id === activeTeamId ? ' <span class="text-xs font-normal">（この端末で使用中）</span>' : ''}</p>
+              <p class="text-xs text-gray-500 truncate">${escapeHtml(t.members||'')}</p>
+            </div>
+            <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-xs font-bold shrink-0">削除</button>
+          </li>`;
+        }).join('');
+
+    renderRecordList();
   }
 
-  selectActiveTeam.addEventListener('change', async () => {
-    if (!currentUser) return;
-    try {
-      await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'),
-        { active_team_id: selectActiveTeam.value || null }, { merge: true });
-    } catch(err) { if(!isTerminatedError(err)) showError('チームの切り替えに失敗しました：' + (err.message||err)); }
+  headerTeamSelect.addEventListener('change', () => {
+    activeTeamId = headerTeamSelect.value;
+    localStorage.setItem('chronolo_active_team', activeTeamId);
+    renderRecordList();
+    searchStart.value=''; searchEnd.value=''; searchKeyword.value='';
+    renderSearchResults([]);
   });
 
   btnAddTeam.addEventListener('click', async () => {
     if (!currentUser) return;
     const name = newTeamName.value.trim();
     const members = newTeamMembers.value.trim();
-    if (!name) { showError('チーム名を入力してください。'); return; }
+    if (!name) { showError('班の名前を入力してください。'); return; }
     try {
       await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name, members, createdAtLocal: Date.now() });
       newTeamName.value=''; newTeamMembers.value='';
-      showSuccess('チームを追加しました。');
-    } catch(err) { if(!isTerminatedError(err)) showError('チームの追加に失敗しました：' + (err.message||err)); }
+      showSuccess('班を追加しました。');
+    } catch(err) { if(!isTerminatedError(err)) showError('班の追加に失敗しました：' + (err.message||err)); }
   });
 
   listTeams.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-team');
     if (!btn || !currentUser) return;
-    if (!confirm('このチームを削除しますか？')) return;
+    if (!confirm('この班を削除しますか？（この班に紐づく記録自体は削除されません）')) return;
     try {
       await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', btn.dataset.teamId));
-      if (btn.dataset.teamId === activeTeamId) {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: null }, { merge: true });
-      }
-    } catch(err) { if(!isTerminatedError(err)) showError('チームの削除に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(!isTerminatedError(err)) showError('班の削除に失敗しました：' + (err.message||err)); }
   });
 
-  function buildTableRowsHtml(entriesAsc, { deletable }) {
-    let html = '', prevDate = null;
+  // ★行の背景色分け＋区切り見出し（両方）を実装した表生成関数
+  // isAllMode=trueのときだけ、班が切り替わる位置に見出し行を挿入し、班ごとの色を適用する
+  function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
+    let html = '';
+    let prevDate = null;
+    let prevTeamId = '__INIT__'; // 最初の行で必ず見出しが出るようにするための初期値
+
     entriesAsc.forEach(entry => {
       const d = toDate(entry.timestamp);
       const dateStr = formatDatePart(d), timeStr = formatTimePart(d);
       const showDate = dateStr !== prevDate; prevDate = dateStr;
+
+      if (isAllMode && entry.team_id !== prevTeamId) {
+        const t = allTeams.find(x => x.id === entry.team_id);
+        const tName = t ? t.name : '（班未設定）';
+        const c = t ? getTeamColor(entry.team_id) : null;
+        const divBg = c ? c.divBg : '#f3f4f6';
+        const divText = c ? c.text : '#374151';
+        html += `<tr>
+          <td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText};">
+            ▶ ${escapeHtml(tName)}
+          </td>
+        </tr>`;
+        prevTeamId = entry.team_id;
+      }
+
       const delBtn = deletable
         ? `<button data-entry-id="${entry.id}" class="btn-delete-entry text-gray-300 hover:text-red-500 text-xs align-top ml-1">✕</button>`
         : '';
-      let rowBg = '';
-      if (entry.entry_type === 'work_start') rowBg = ' bg-green-50';
-      if (entry.entry_type === 'work_end')   rowBg = ' bg-red-50';
-      html += `<tr class="border-b border-gray-100 align-top${rowBg}">
+
+      // 行の背景：勤務打刻（緑・赤）を最優先し、それ以外は「すべての班を表示」時のみ班の色を付ける
+      let rowClass = 'border-b border-gray-100 align-top';
+      let rowStyle = '';
+      if (entry.entry_type === 'work_start') {
+        rowClass += ' bg-green-50';
+      } else if (entry.entry_type === 'work_end') {
+        rowClass += ' bg-red-50';
+      } else if (isAllMode && entry.team_id) {
+        const c = getTeamColor(entry.team_id);
+        if (c) rowStyle = `background-color:${c.bg};`;
+      }
+
+      let teamBadge = '';
+      if (isAllMode && entry.team_id) {
+        const t = allTeams.find(x => x.id === entry.team_id);
+        if (t) teamBadge = `<span class="inline-block text-[10px] bg-white/70 text-gray-700 px-1 rounded mr-1 mb-0.5 border border-gray-300">${escapeHtml(t.name)}</span>`;
+      }
+
+      html += `<tr class="${rowClass}" style="${rowStyle}">
         <td class="py-2 px-1 text-center">
           ${showDate ? `<div class="text-[10px] text-blue-600 font-bold leading-tight">${escapeHtml(dateStr)}</div>` : ''}
           <div class="text-xs text-gray-700 leading-tight">${escapeHtml(timeStr)}</div>
         </td>
         <td class="py-2 px-1 text-center text-xs break-all">${escapeHtml(entry.from)}</td>
         <td class="py-2 px-1 text-center text-xs break-all">${escapeHtml(entry.to)}</td>
-        <td class="py-2 px-2 text-sm whitespace-pre-wrap break-words">${escapeHtml(entry.content)}${delBtn}</td>
+        <td class="py-2 px-2 text-sm whitespace-pre-wrap break-words">${teamBadge}${escapeHtml(entry.content)}${delBtn}</td>
       </tr>`;
     });
     return html;
   }
 
   function renderRecordList() {
-    if (allEntries.length === 0) {
-      recordListBody.innerHTML = ''; recordListEmpty.classList.remove('hidden'); recordCount.textContent = ''; return;
+    const targetEntries = getFilteredEntries(allEntries);
+    const isAllMode = activeTeamId === 'ALL';
+    if (!activeTeamId) {
+      recordListBody.innerHTML = ''; recordListEmpty.classList.remove('hidden');
+      recordListEmpty.textContent = '上部のメニューから班を選択してください';
+      recordCount.textContent = ''; return;
+    }
+    if (targetEntries.length === 0) {
+      recordListBody.innerHTML = ''; recordListEmpty.classList.remove('hidden');
+      recordListEmpty.textContent = '記録はまだありません';
+      recordCount.textContent = ''; return;
     }
     recordListEmpty.classList.add('hidden');
-    recordCount.textContent = `${allEntries.length}件`;
-    recordListBody.innerHTML = buildTableRowsHtml(allEntries, { deletable: true });
+    recordCount.textContent = `${targetEntries.length}件`;
+    recordListBody.innerHTML = buildTableRowsHtml(targetEntries, { deletable: true, isAllMode });
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
@@ -903,13 +911,17 @@
 
   async function saveEntry(from, to, content, entryType) {
     if (!currentUser) return;
+    if (!activeTeamId || activeTeamId === 'ALL') {
+      showError('記録を追加するには、画面上部のメニューから特定の班を選択してください。');
+      throw new Error('班未選択');
+    }
     let timestamp;
     if (toggleManualDatetime.checked) {
       if (!entryDatetimeInput.value) { showError('日時を指定してください。'); throw new Error('日時未指定'); }
       timestamp = new Date(entryDatetimeInput.value);
     } else { timestamp = new Date(); }
     await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), {
-      timestamp, from, to, content, entry_type: entryType, createdAt: serverTimestamp()
+      timestamp, from, to, content, entry_type: entryType, team_id: activeTeamId, createdAt: serverTimestamp()
     });
   }
 
@@ -921,20 +933,20 @@
       await saveEntry(from, to, content, 'normal');
       entryFrom.value=''; entryTo.value=''; entryContent.value='';
       initDefaultDatetime();
-    } catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
+    } catch(err) { if(err.message !== '日時未指定' && err.message !== '班未選択' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnSubmitEntry.disabled = false; }
   });
 
   btnWorkStart.addEventListener('click', async () => {
     btnWorkStart.disabled = true;
     try { await saveEntry('','','【勤務開始】','work_start'); initDefaultDatetime(); }
-    catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
+    catch(err) { if(err.message !== '日時未指定' && err.message !== '班未選択' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnWorkStart.disabled = false; }
   });
   btnWorkEnd.addEventListener('click', async () => {
     btnWorkEnd.disabled = true;
     try { await saveEntry('','','【勤務終了】','work_end'); initDefaultDatetime(); }
-    catch(err) { if(err.message !== '日時未指定' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
+    catch(err) { if(err.message !== '日時未指定' && err.message !== '班未選択' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnWorkEnd.disabled = false; }
   });
 
@@ -984,7 +996,8 @@
     }
     searchListEmpty.classList.add('hidden');
     searchCount.textContent = `${results.length}件`;
-    searchListBody.innerHTML = buildTableRowsHtml(results, { deletable: false });
+    const isAllMode = activeTeamId === 'ALL';
+    searchListBody.innerHTML = buildTableRowsHtml(results, { deletable: false, isAllMode });
     workTimeSummaryCard.classList.remove('hidden');
     workTimeSummaryContent.innerHTML = calculateWorkTime(results).html;
   }
@@ -993,7 +1006,8 @@
     const startVal = searchStart.value ? new Date(searchStart.value) : null;
     const endVal = searchEnd.value ? new Date(searchEnd.value) : null;
     const kw = searchKeyword.value.trim().toLowerCase();
-    renderSearchResults(allEntries.filter(e => {
+    const targetEntries = getFilteredEntries(allEntries);
+    renderSearchResults(targetEntries.filter(e => {
       const d = toDate(e.timestamp);
       if (startVal && d < startVal) return false;
       if (endVal && d > endVal) return false;
@@ -1007,14 +1021,9 @@
     searchListEmpty.textContent = '検索条件を指定して「検索する」を押してください';
   });
 
-  // ============================================================
-  // ★変更：PDF出力ロジック
-  // 1回のhtml2canvasで表本体全体を画像化し、各行の実際の境界(getBoundingClientRect)を
-  // 測定してからcanvasを正確な位置でスライスする。表ヘッダーは別画像として
-  // 各ページの先頭に繰り返し貼り付け、上下左右に余白を確保する。
-  // ============================================================
   btnExportPdf.addEventListener('click', async () => {
-    const target = lastSearchResults.length > 0 ? lastSearchResults : allEntries;
+    const isAllMode = activeTeamId === 'ALL';
+    const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
 
     btnExportPdf.disabled = true;
@@ -1022,46 +1031,40 @@
 
     try {
       const now = new Date();
-
-      // ---- ①テンプレートに内容を差し込む ----
       pdfExportDate.textContent = `出力日時：${formatDatePart(now)} ${formatTimePart(now)}`;
 
-      const activeTeam = allTeams.find(t => t.id === activeTeamId);
-      if (activeTeam) {
+      if (isAllMode) {
         pdfTeamHeader.style.display = 'block';
-        pdfTeamName.textContent = `チーム名：${activeTeam.name}`;
-        pdfTeamMembers.textContent = `メンバー：${activeTeam.members || '（未設定）'}`;
+        pdfTeamName.textContent = 'すべての班の記録（混合）';
+        pdfTeamMembers.textContent = allTeams.map(t => t.name).join('、');
       } else {
-        pdfTeamHeader.style.display = 'none';
+        const activeTeam = allTeams.find(t => t.id === activeTeamId);
+        if (activeTeam) {
+          pdfTeamHeader.style.display = 'block';
+          pdfTeamName.textContent = `班名：${activeTeam.name}`;
+          pdfTeamMembers.textContent = `メンバー：${activeTeam.members || '（未設定）'}`;
+        } else { pdfTeamHeader.style.display = 'none'; }
       }
 
       const summary = calculateWorkTime(target);
-      if (summary.hasAnyData) {
-        pdfWorktimeSection.style.display = 'block';
-        pdfWorkTimeContent.innerHTML = summary.html;
-      } else {
-        pdfWorktimeSection.style.display = 'none';
-      }
+      if (summary.hasAnyData) { pdfWorktimeSection.style.display = 'block'; pdfWorkTimeContent.innerHTML = summary.html; }
+      else { pdfWorktimeSection.style.display = 'none'; }
 
-      pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false });
+      pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false, isAllMode });
 
-      // ---- ②ページ設計（余白・サイズ） ----
-      const SCALE = 2; // html2canvasの解像度倍率
+      const SCALE = 2;
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWmm = pdf.internal.pageSize.getWidth();   // 210mm
-      const pageHmm = pdf.internal.pageSize.getHeight();  // 297mm
-      const marginTop = 15, marginBottom = 15, marginSide = 12; // 余白(mm)
+      const pageWmm = pdf.internal.pageSize.getWidth();
+      const pageHmm = pdf.internal.pageSize.getHeight();
+      const marginTop = 15, marginBottom = 15, marginSide = 12;
       const contentWmm = pageWmm - marginSide * 2;
 
       const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
       const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
 
-      // ---- ③各ブロックを個別に画像化 ----
       const headerCanvas = await html2canvas(pdfHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
-      const worktimeCanvas = summary.hasAnyData
-        ? await html2canvas(pdfWorktimeSection, { scale: SCALE, backgroundColor: '#ffffff' })
-        : null;
+      const worktimeCanvas = summary.hasAnyData ? await html2canvas(pdfWorktimeSection, { scale: SCALE, backgroundColor: '#ffffff' }) : null;
       const tableHeaderCanvas = await html2canvas(pdfTableHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
       const bodyCanvas = await html2canvas(pdfTableBodySection, { scale: SCALE, backgroundColor: '#ffffff' });
 
@@ -1069,19 +1072,14 @@
       const worktimeHmm = worktimeCanvas ? pxToMm(worktimeCanvas.height) : 0;
       const tableHeaderHmm = pxToMm(tableHeaderCanvas.height);
 
-      // ---- ④各行の実際の境界を測定（表本体canvas内でのpx位置） ----
       const bodyRect = pdfTableBodySection.getBoundingClientRect();
       const rowEls = pdfExportBody.querySelectorAll('tr');
       const rowBoundaries = [];
       rowEls.forEach(tr => {
         const r = tr.getBoundingClientRect();
-        rowBoundaries.push({
-          top: (r.top - bodyRect.top) * SCALE,
-          bottom: (r.bottom - bodyRect.top) * SCALE
-        });
+        rowBoundaries.push({ top: (r.top - bodyRect.top) * SCALE, bottom: (r.bottom - bodyRect.top) * SCALE });
       });
 
-      // ---- ⑤ページ先頭を描画する共通関数 ----
       let cursorY = marginTop;
       function drawPageTop(includeMainHeader) {
         cursorY = marginTop;
@@ -1098,22 +1096,16 @@
       }
       drawPageTop(true);
 
-      // ---- ⑥行の境界に沿って表本体canvasをスライスして配置 ----
-      let sliceStartPx = 0;
-      let rowIndex = 0;
-
+      let sliceStartPx = 0, rowIndex = 0;
       while (rowIndex < rowBoundaries.length) {
         const remainingHmm = pageHmm - marginBottom - cursorY;
         const remainingPx = mmToPx(remainingHmm);
 
-        let sliceEndPx = sliceStartPx;
-        let rowsAdded = 0;
+        let sliceEndPx = sliceStartPx, rowsAdded = 0;
         while (rowIndex < rowBoundaries.length && (rowBoundaries[rowIndex].bottom - sliceStartPx) <= remainingPx) {
           sliceEndPx = rowBoundaries[rowIndex].bottom;
-          rowIndex++;
-          rowsAdded++;
+          rowIndex++; rowsAdded++;
         }
-        // 1行もこのページに入らない極端なケース（安全策：無限ループ防止）
         if (rowsAdded === 0) {
           sliceEndPx = rowBoundaries[rowIndex].bottom;
           rowIndex++;
@@ -1121,40 +1113,28 @@
 
         const sliceHeightPx = Math.max(1, Math.round(sliceEndPx - sliceStartPx));
         const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = bodyCanvas.width;
-        sliceCanvas.height = sliceHeightPx;
+        sliceCanvas.width = bodyCanvas.width; sliceCanvas.height = sliceHeightPx;
         const ctx = sliceCanvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceHeightPx);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, sliceCanvas.width, sliceHeightPx);
         ctx.drawImage(bodyCanvas, 0, sliceStartPx, bodyCanvas.width, sliceHeightPx, 0, 0, bodyCanvas.width, sliceHeightPx);
 
         const sliceHmm = pxToMm(sliceHeightPx);
         pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, sliceHmm);
-        cursorY += sliceHmm;
-        sliceStartPx = sliceEndPx;
+        cursorY += sliceHmm; sliceStartPx = sliceEndPx;
 
-        if (rowIndex < rowBoundaries.length) {
-          pdf.addPage();
-          drawPageTop(false); // 2ページ目以降は表ヘッダーだけ繰り返す
-        }
+        if (rowIndex < rowBoundaries.length) { pdf.addPage(); drawPageTop(false); }
       }
 
-      // ---- ⑦ページ番号を追加 ----
       const totalPages = pdf.internal.getNumberOfPages();
       for (let p = 1; p <= totalPages; p++) {
-        pdf.setPage(p);
-        pdf.setFontSize(8);
-        pdf.setTextColor(150, 150, 150);
+        pdf.setPage(p); pdf.setFontSize(8); pdf.setTextColor(150, 150, 150);
         pdf.text(`${p} / ${totalPages}`, pageWmm - marginSide - 10, pageHmm - 8);
       }
-
       pdf.save(`経時記録_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
     } catch(err) {
-      console.error(err);
-      showError('PDFの出力に失敗しました：' + (err.message||err));
+      console.error(err); showError('PDFの出力に失敗しました：' + (err.message||err));
     } finally {
-      btnExportPdf.disabled = false;
-      btnExportPdf.textContent = '📑 検索結果と集計をPDFで出力';
+      btnExportPdf.disabled = false; btnExportPdf.textContent = '📑 検索結果と集計をPDFで出力';
     }
   });
 
@@ -1172,19 +1152,15 @@
 
   btnBackup.addEventListener('click', () => {
     if (!currentUser) return;
-    const activeTeam = allTeams.find(t => t.id === activeTeamId);
     const templatesFlat = [];
-    Object.keys(allTemplates).forEach(type => {
-      allTemplates[type].forEach(t => templatesFlat.push({ type, text: t.text }));
-    });
+    Object.keys(allTemplates).forEach(type => { allTemplates[type].forEach(t => templatesFlat.push({ type, text: t.text })); });
     const exportData = {
-      version: 2, exported_at: new Date().toISOString(),
-      entries: allEntries.map(e => ({ timestamp: toDate(e.timestamp).toISOString(), from: e.from||'', to: e.to||'', content: e.content||'', entry_type: e.entry_type||'normal' })),
+      version: 3, exported_at: new Date().toISOString(),
+      entries: allEntries.map(e => ({ timestamp: toDate(e.timestamp).toISOString(), from: e.from||'', to: e.to||'', content: e.content||'', entry_type: e.entry_type||'normal', team_id: e.team_id||null })),
       templates: templatesFlat,
-      teams: allTeams.map(t => ({ name: t.name, members: t.members||'' })),
-      active_team_name: activeTeam ? activeTeam.name : null
+      teams: allTeams.map(t => ({ id: t.id, name: t.name, members: t.members||'' }))
     };
-    downloadJson(exportData, `chronology_backup_${nowStamp()}.json`);
+    downloadJson(exportData, `chronology_backup_ALL_${nowStamp()}.json`);
     showSuccess('全体バックアップを保存しました。');
   });
 
@@ -1192,7 +1168,7 @@
   inputRestoreFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreFile.value = '';
     if (!file || !currentUser) return;
-    if (!confirm('全体バックアップから復元します。\n現在の記録・定型文・チーム情報はすべて削除され、選択したファイルの内容に置き換わります。\nこの操作は取り消せません。本当に復元しますか？')) return;
+    if (!confirm('全体バックアップから復元します。\n現在の記録・定型文・班情報はすべて削除され、選択したファイルの内容に置き換わります。\nこの操作は取り消せません。本当に復元しますか？')) return;
     btnRestoreTrigger.disabled = true;
     try {
       const data = JSON.parse(await file.text());
@@ -1205,18 +1181,16 @@
       ]);
       const total = (data.entries||[]).length; let done = 0;
       for (const entry of (data.entries||[])) {
-        await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', createdAt: serverTimestamp() });
+        const tId = entry.team_id || (activeTeamId && activeTeamId !== 'ALL' ? activeTeamId : null);
+        await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', team_id: tId, createdAt: serverTimestamp() });
         done++; btnRestoreTrigger.textContent = `記録を復元中…（${done}/${total}）`;
       }
       for (const tmpl of (data.templates||[])) {
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'templates'), { type: tmpl.type, text: tmpl.text, createdAtLocal: Date.now() });
       }
-      let restoredActiveTeamId = null;
       for (const team of (data.teams||[])) {
-        const ref = await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name: team.name, members: team.members||'', createdAtLocal: Date.now() });
-        if (data.active_team_name && team.name === data.active_team_name) restoredActiveTeamId = ref.id;
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id || String(Date.now())), { name: team.name, members: team.members||'', createdAtLocal: Date.now() });
       }
-      await setDocSafe(doc(db, WS_PATH, WS_ID, 'app_settings', 'main'), { active_team_id: restoredActiveTeamId }, { merge: true });
       showSuccess(`全体バックアップの復元が完了しました（記録${total}件）。`);
     } catch(err) { if(!isTerminatedError(err)) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); } }
     finally { btnRestoreTrigger.disabled = false; btnRestoreTrigger.textContent = '⬆️ 全体バックアップから復元（すべて上書き）'; }
@@ -1224,33 +1198,36 @@
 
   btnBackupEntries.addEventListener('click', () => {
     if (!currentUser) return;
-    if (allEntries.length === 0) { showError('保存できるクロノロがありません。'); return; }
+    const targetEntries = getFilteredEntries(allEntries);
+    if (targetEntries.length === 0) { showError('保存できるクロノロがありません。'); return; }
     const exportData = {
-      type: 'entries_only', version: 1, exported_at: new Date().toISOString(),
-      entries: allEntries.map(e => ({
+      type: 'entries_only', version: 2, exported_at: new Date().toISOString(),
+      entries: targetEntries.map(e => ({
         timestamp: toDate(e.timestamp).toISOString(),
-        from: e.from || '', to: e.to || '', content: e.content || '', entry_type: e.entry_type || 'normal'
+        from: e.from || '', to: e.to || '', content: e.content || '', entry_type: e.entry_type || 'normal', team_id: e.team_id || null
       }))
     };
-    downloadJson(exportData, `chronolo_${nowStamp()}.json`);
-    showSuccess(`クロノロ${allEntries.length}件を保存しました。`);
+    downloadJson(exportData, `chronolo_${activeTeamId === 'ALL' ? 'ALL' : 'TEAM'}_${nowStamp()}.json`);
+    showSuccess(`クロノロ${targetEntries.length}件を保存しました。`);
   });
 
   btnRestoreEntriesTrigger.addEventListener('click', () => inputRestoreEntriesFile.click());
   inputRestoreEntriesFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreEntriesFile.value = '';
     if (!file || !currentUser) return;
-    if (!confirm('クロノロだけを復元します。\n現在のクロノロ（記録）はすべて削除され、選択したファイルの内容に置き換わります。\n定型文・チーム情報はそのまま残ります。\n\n※現在入力中の記録がある場合は、先に「⬇️ クロノロだけ保存」で今の状態を保存してから復元することをおすすめします。\n\n本当に復元しますか？')) return;
+    if (!confirm('現在表示中の班のクロノロだけを復元します。\n現在表示中のクロノロはすべて削除され、選択したファイルの内容に置き換わります。\n定型文・班情報はそのまま残ります。\n\n※team_idの無い古いバックアップの場合、今選択している班に自動的に割り当てられます。\n\n本当に復元しますか？')) return;
     btnRestoreEntriesTrigger.disabled = true;
     try {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.entries)) { showError('このファイルはクロノロのバックアップとして認識できません。'); return; }
       btnRestoreEntriesTrigger.textContent = '既存のクロノロを削除中…';
-      await clearCollectionBatch(collection(db, WS_PATH, WS_ID, 'entries'));
+      const targetEntries = getFilteredEntries(allEntries);
+      await deleteEntriesBatch(targetEntries);
       const total = data.entries.length; let done = 0;
       for (const entry of data.entries) {
+        const tId = entry.team_id || (activeTeamId !== 'ALL' ? activeTeamId : null);
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), {
-          timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', createdAt: serverTimestamp()
+          timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', team_id: tId, createdAt: serverTimestamp()
         });
         done++; btnRestoreEntriesTrigger.textContent = `復元中…（${done}/${total}）`;
       }
@@ -1260,15 +1237,16 @@
   });
 
   btnDeleteAll.addEventListener('click', async () => {
-    if (allEntries.length === 0) { showError('削除できるクロノロがありません。'); return; }
-    if (!confirm(`クロノロ全${allEntries.length}件を削除します。\n定型文・チーム情報はそのまま残ります。\nこの操作は取り消せません。本当に削除しますか？`)) return;
-    if (!confirm('最終確認：本当にすべてのクロノロを削除してよろしいですか？')) return;
+    const targetEntries = getFilteredEntries(allEntries);
+    if (targetEntries.length === 0) { showError('削除できるクロノロがありません。'); return; }
+    if (!confirm(`現在表示中のクロノロ全${targetEntries.length}件を削除します。\n定型文・班情報はそのまま残ります。\nこの操作は取り消せません。本当に削除しますか？`)) return;
+    if (!confirm('最終確認：本当に削除してよろしいですか？')) return;
     const originalText = btnDeleteAll.textContent;
     btnDeleteAll.disabled = true;
     btnDeleteAll.textContent = '削除中…';
     try {
-      await deleteEntriesBatch(allEntries);
-      showSuccess('クロノロを削除しました。定型文・チームはそのまま残っています。');
+      await deleteEntriesBatch(targetEntries);
+      showSuccess('クロノロを削除しました。定型文・班情報はそのまま残っています。');
     } catch(err) {
       if (!isTerminatedError(err)) showError('削除に失敗しました：' + (err.message||err));
     } finally {
