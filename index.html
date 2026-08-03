@@ -27,7 +27,17 @@
   .toggle-knob { width: 20px; height: 20px; transition: transform 0.2s ease-in-out; }
   input:checked + .toggle-track .toggle-knob { transform: translateX(20px); }
   input:checked + .toggle-track { background-color: #2563eb; }
-  #pdf-export-container { position: absolute; left: -9999px; top: 0; width: 760px; background: #ffffff; }
+
+  /* ★変更：PDF描画用テンプレート（ブロックごとに分離して個別に画像化する） */
+  #pdf-render-root {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    width: 720px;
+    background: #ffffff;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #1f2937;
+  }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
@@ -371,30 +381,47 @@
   </nav>
 </div>
 
-<div id="pdf-export-container">
-  <div style="padding:24px; font-family:'Noto Sans JP',sans-serif; color:#1f2937;">
-    <h1 style="font-size:22px; font-weight:900; margin:0 0 4px 0;">経時記録</h1>
+<!-- ============================================================
+     ★変更：PDF描画用テンプレート（ヘッダー・勤務時間・表ヘッダー・表本体を
+     ブロックごとに分離し、個別に画像化してから正確な位置で組み立てる）
+     ============================================================ -->
+<div id="pdf-render-root">
+
+  <!-- ①タイトル・チーム情報・出力日時 -->
+  <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
+    <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
     <div id="pdf-team-header" style="display:none; margin-bottom:8px; padding:8px 12px; background:#eff6ff; border-left:4px solid #2563eb;">
-      <p id="pdf-team-name" style="font-size:13px; font-weight:bold; margin:0 0 2px 0;"></p>
-      <p id="pdf-team-members" style="font-size:11px; color:#4b5563; margin:0;"></p>
+      <div id="pdf-team-name" style="font-size:13px; font-weight:bold; color:#1e40af; margin:0 0 2px 0;"></div>
+      <div id="pdf-team-members" style="font-size:11px; color:#4b5563;"></div>
     </div>
-    <p id="pdf-export-date" style="font-size:12px; color:#6b7280; margin:0 0 16px 0;"></p>
-    <div id="pdf-work-time-summary" style="display:none; margin-bottom:16px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb;">
-      <h2 style="font-size:14px; font-weight:bold; margin:0 0 8px 0;">勤務時間集計</h2>
-      <div id="pdf-work-time-content" style="font-size:12px; line-height:1.6;"></div>
-    </div>
-    <table style="width:100%; border-collapse:collapse; font-size:12px;">
-      <colgroup>
-        <col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%">
-      </colgroup>
+    <div id="pdf-export-date" style="font-size:11px; color:#6b7280;"></div>
+  </div>
+
+  <!-- ②勤務時間集計（存在する場合のみ表示） -->
+  <div id="pdf-worktime-section" style="display:none; margin:0 20px 14px 20px; padding:10px 14px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:4px;">
+    <div style="font-size:13px; font-weight:bold; margin:0 0 6px 0;">勤務時間集計</div>
+    <div id="pdf-work-time-content" style="font-size:11px; line-height:1.7;"></div>
+  </div>
+
+  <!-- ③表ヘッダー行（各ページの先頭に繰り返し描画するためのテンプレート） -->
+  <div id="pdf-table-header-section" style="padding:0 20px;">
+    <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
+      <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
       <thead>
         <tr style="background:#e5e7eb;">
-          <th style="border:1px solid #9ca3af; padding:6px;">時間</th>
-          <th style="border:1px solid #9ca3af; padding:6px;">発</th>
-          <th style="border:1px solid #9ca3af; padding:6px;">受</th>
-          <th style="border:1px solid #9ca3af; padding:6px; text-align:left;">内容</th>
+          <th style="border:1px solid #9ca3af; padding:7px 6px;">時間</th>
+          <th style="border:1px solid #9ca3af; padding:7px 6px;">発</th>
+          <th style="border:1px solid #9ca3af; padding:7px 6px;">受</th>
+          <th style="border:1px solid #9ca3af; padding:7px 6px; text-align:left;">内容</th>
         </tr>
       </thead>
+    </table>
+  </div>
+
+  <!-- ④表本体（全行。1回だけまとめて画像化し、行の境界で正確にスライスする） -->
+  <div id="pdf-table-body-section" style="padding:0 20px 20px 20px;">
+    <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
+      <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
       <tbody id="pdf-export-body"></tbody>
     </table>
   </div>
@@ -403,7 +430,6 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  // ★変更：writeBatch を追加インポート（一括削除に使用）
   import {
     initializeFirestore, persistentLocalCache, persistentSingleTabManager,
     collection, doc, addDoc, setDoc, deleteDoc, getDocs, writeBatch,
@@ -421,10 +447,6 @@
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-
-  // 引き続き「今アクティブなタブが常に優先」される設定を使用します。
-  // ★重要：同じ端末で複数タブ／ホーム画面アイコンとSafariを同時に開くと、
-  // この設定が原因で片方の接続が強制終了されます。1つの入口に統一してください。
   const db = initializeFirestore(app, {
     localCache: persistentLocalCache({
       tabManager: persistentSingleTabManager({ forceOwnership: true })
@@ -510,14 +532,17 @@
   const btnDeleteAll = el('btn-delete-all');
   const btnSignout = el('btn-signout');
 
-  const pdfExportContainer = el('pdf-export-container');
-  const pdfExportDate = el('pdf-export-date');
-  const pdfExportBody = el('pdf-export-body');
+  // ★変更：PDF描画用要素（ブロック分離版）
+  const pdfHeaderSection = el('pdf-header-section');
   const pdfTeamHeader = el('pdf-team-header');
   const pdfTeamName = el('pdf-team-name');
   const pdfTeamMembers = el('pdf-team-members');
-  const pdfWorkTimeSummary = el('pdf-work-time-summary');
+  const pdfExportDate = el('pdf-export-date');
+  const pdfWorktimeSection = el('pdf-worktime-section');
   const pdfWorkTimeContent = el('pdf-work-time-content');
+  const pdfTableHeaderSection = el('pdf-table-header-section');
+  const pdfTableBodySection = el('pdf-table-body-section');
+  const pdfExportBody = el('pdf-export-body');
 
   let currentUser = null;
   let entriesUnsub = null, templatesUnsub = null, teamsUnsub = null, settingsUnsub = null;
@@ -542,13 +567,10 @@
   }
   errorBannerClose.addEventListener('click', () => errorBanner.classList.add('hidden'));
 
-  // ★追加：「terminated（接続終了済み）」エラーかどうかを判定する共通ヘルパー
   function isTerminatedError(err) {
     const msg = err && err.message ? err.message : String(err);
     return msg.includes('already been terminated');
   }
-
-  // ★追加：terminatedエラー発生時の共通処理（多重発火を防ぎつつ自動リロード）
   let recoveringFromTermination = false;
   function handleTerminated() {
     if (recoveringFromTermination) return;
@@ -556,8 +578,6 @@
     showError('内部の接続が古くなっているため、画面を自動的に再読み込みします。再読み込み後、もう一度操作をお試しください。');
     setTimeout(() => window.location.reload(), 1500);
   }
-
-  // ★変更：addDoc / deleteDoc / setDoc すべてに同じ安全ラッパーを適用
   async function addDocSafe(colRef, data) {
     try { return await addDoc(colRef, data); }
     catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
@@ -570,8 +590,6 @@
     try { return await setDoc(docRef, data, options || {}); }
     catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
   }
-
-  // ★追加：コレクション内の全ドキュメントを、500件ごとの一括処理（バッチ）でまとめて削除する
   async function clearCollectionBatch(colRef) {
     const snap = await getDocs(colRef);
     const docs = snap.docs;
@@ -583,8 +601,6 @@
       catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
     }
   }
-
-  // ★追加：記録一覧（entries）を500件ごとの一括処理で削除する専用関数
   async function deleteEntriesBatch(entries) {
     for (let i = 0; i < entries.length; i += 500) {
       const chunk = entries.slice(i, i + 500);
@@ -748,7 +764,6 @@
       `).join('');
   }
 
-  // ★変更：setDocSafeを使用
   selectActiveTeam.addEventListener('change', async () => {
     if (!currentUser) return;
     try {
@@ -769,7 +784,6 @@
     } catch(err) { if(!isTerminatedError(err)) showError('チームの追加に失敗しました：' + (err.message||err)); }
   });
 
-  // ★変更：deleteDocSafe / setDocSafeを使用
   listTeams.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-team');
     if (!btn || !currentUser) return;
@@ -817,7 +831,6 @@
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
-  // ★変更：deleteDocSafeを使用
   recordListBody.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-entry');
     if (!btn || !currentUser) return;
@@ -879,7 +892,6 @@
       catch(err) { if(!isTerminatedError(err)) showError('定型文の登録に失敗しました：' + (err.message||err)); }
     });
   });
-  // ★変更：deleteDocSafeを使用
   [listTemplateContent, listTemplateFrom, listTemplateTo].forEach(ul => {
     ul.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-template-delete');
@@ -995,38 +1007,155 @@
     searchListEmpty.textContent = '検索条件を指定して「検索する」を押してください';
   });
 
+  // ============================================================
+  // ★変更：PDF出力ロジック
+  // 1回のhtml2canvasで表本体全体を画像化し、各行の実際の境界(getBoundingClientRect)を
+  // 測定してからcanvasを正確な位置でスライスする。表ヘッダーは別画像として
+  // 各ページの先頭に繰り返し貼り付け、上下左右に余白を確保する。
+  // ============================================================
   btnExportPdf.addEventListener('click', async () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : allEntries;
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
-    btnExportPdf.disabled = true; btnExportPdf.textContent = '出力中…';
+
+    btnExportPdf.disabled = true;
+    btnExportPdf.textContent = '出力中…';
+
     try {
       const now = new Date();
+
+      // ---- ①テンプレートに内容を差し込む ----
       pdfExportDate.textContent = `出力日時：${formatDatePart(now)} ${formatTimePart(now)}`;
-      pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false });
 
       const activeTeam = allTeams.find(t => t.id === activeTeamId);
       if (activeTeam) {
         pdfTeamHeader.style.display = 'block';
         pdfTeamName.textContent = `チーム名：${activeTeam.name}`;
         pdfTeamMembers.textContent = `メンバー：${activeTeam.members || '（未設定）'}`;
-      } else { pdfTeamHeader.style.display = 'none'; }
+      } else {
+        pdfTeamHeader.style.display = 'none';
+      }
 
       const summary = calculateWorkTime(target);
-      if (summary.hasAnyData) { pdfWorkTimeSummary.style.display = 'block'; pdfWorkTimeContent.innerHTML = summary.html; }
-      else { pdfWorkTimeSummary.style.display = 'none'; }
+      if (summary.hasAnyData) {
+        pdfWorktimeSection.style.display = 'block';
+        pdfWorkTimeContent.innerHTML = summary.html;
+      } else {
+        pdfWorktimeSection.style.display = 'none';
+      }
 
-      const canvas = await html2canvas(pdfExportContainer, { scale: 2, backgroundColor: '#ffffff' });
-      const imgData = canvas.toDataURL('image/png');
+      pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false });
+
+      // ---- ②ページ設計（余白・サイズ） ----
+      const SCALE = 2; // html2canvasの解像度倍率
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p','mm','a4');
-      const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
-      const ih = (canvas.height * pw) / canvas.width;
-      let left = ih, pos = 0;
-      pdf.addImage(imgData,'PNG',0,pos,pw,ih); left -= ph;
-      while (left > 0) { pos = left-ih; pdf.addPage(); pdf.addImage(imgData,'PNG',0,pos,pw,ih); left -= ph; }
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWmm = pdf.internal.pageSize.getWidth();   // 210mm
+      const pageHmm = pdf.internal.pageSize.getHeight();  // 297mm
+      const marginTop = 15, marginBottom = 15, marginSide = 12; // 余白(mm)
+      const contentWmm = pageWmm - marginSide * 2;
+
+      const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
+      const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
+
+      // ---- ③各ブロックを個別に画像化 ----
+      const headerCanvas = await html2canvas(pdfHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
+      const worktimeCanvas = summary.hasAnyData
+        ? await html2canvas(pdfWorktimeSection, { scale: SCALE, backgroundColor: '#ffffff' })
+        : null;
+      const tableHeaderCanvas = await html2canvas(pdfTableHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
+      const bodyCanvas = await html2canvas(pdfTableBodySection, { scale: SCALE, backgroundColor: '#ffffff' });
+
+      const headerHmm = pxToMm(headerCanvas.height);
+      const worktimeHmm = worktimeCanvas ? pxToMm(worktimeCanvas.height) : 0;
+      const tableHeaderHmm = pxToMm(tableHeaderCanvas.height);
+
+      // ---- ④各行の実際の境界を測定（表本体canvas内でのpx位置） ----
+      const bodyRect = pdfTableBodySection.getBoundingClientRect();
+      const rowEls = pdfExportBody.querySelectorAll('tr');
+      const rowBoundaries = [];
+      rowEls.forEach(tr => {
+        const r = tr.getBoundingClientRect();
+        rowBoundaries.push({
+          top: (r.top - bodyRect.top) * SCALE,
+          bottom: (r.bottom - bodyRect.top) * SCALE
+        });
+      });
+
+      // ---- ⑤ページ先頭を描画する共通関数 ----
+      let cursorY = marginTop;
+      function drawPageTop(includeMainHeader) {
+        cursorY = marginTop;
+        if (includeMainHeader) {
+          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, headerHmm);
+          cursorY += headerHmm;
+          if (worktimeCanvas) {
+            pdf.addImage(worktimeCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, worktimeHmm);
+            cursorY += worktimeHmm;
+          }
+        }
+        pdf.addImage(tableHeaderCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, tableHeaderHmm);
+        cursorY += tableHeaderHmm;
+      }
+      drawPageTop(true);
+
+      // ---- ⑥行の境界に沿って表本体canvasをスライスして配置 ----
+      let sliceStartPx = 0;
+      let rowIndex = 0;
+
+      while (rowIndex < rowBoundaries.length) {
+        const remainingHmm = pageHmm - marginBottom - cursorY;
+        const remainingPx = mmToPx(remainingHmm);
+
+        let sliceEndPx = sliceStartPx;
+        let rowsAdded = 0;
+        while (rowIndex < rowBoundaries.length && (rowBoundaries[rowIndex].bottom - sliceStartPx) <= remainingPx) {
+          sliceEndPx = rowBoundaries[rowIndex].bottom;
+          rowIndex++;
+          rowsAdded++;
+        }
+        // 1行もこのページに入らない極端なケース（安全策：無限ループ防止）
+        if (rowsAdded === 0) {
+          sliceEndPx = rowBoundaries[rowIndex].bottom;
+          rowIndex++;
+        }
+
+        const sliceHeightPx = Math.max(1, Math.round(sliceEndPx - sliceStartPx));
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = bodyCanvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceHeightPx);
+        ctx.drawImage(bodyCanvas, 0, sliceStartPx, bodyCanvas.width, sliceHeightPx, 0, 0, bodyCanvas.width, sliceHeightPx);
+
+        const sliceHmm = pxToMm(sliceHeightPx);
+        pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, sliceHmm);
+        cursorY += sliceHmm;
+        sliceStartPx = sliceEndPx;
+
+        if (rowIndex < rowBoundaries.length) {
+          pdf.addPage();
+          drawPageTop(false); // 2ページ目以降は表ヘッダーだけ繰り返す
+        }
+      }
+
+      // ---- ⑦ページ番号を追加 ----
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        pdf.setPage(p);
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`${p} / ${totalPages}`, pageWmm - marginSide - 10, pageHmm - 8);
+      }
+
       pdf.save(`経時記録_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
-    } catch(err) { showError('PDFの出力に失敗しました：' + (err.message||err)); }
-    finally { btnExportPdf.disabled=false; btnExportPdf.textContent='📑 検索結果と集計をPDFで出力'; }
+    } catch(err) {
+      console.error(err);
+      showError('PDFの出力に失敗しました：' + (err.message||err));
+    } finally {
+      btnExportPdf.disabled = false;
+      btnExportPdf.textContent = '📑 検索結果と集計をPDFで出力';
+    }
   });
 
   function downloadJson(data, filename) {
@@ -1059,7 +1188,6 @@
     showSuccess('全体バックアップを保存しました。');
   });
 
-  // ★変更：既存データの削除をclearCollectionBatch（一括処理）に変更
   btnRestoreTrigger.addEventListener('click', () => inputRestoreFile.click());
   inputRestoreFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreFile.value = '';
@@ -1108,7 +1236,6 @@
     showSuccess(`クロノロ${allEntries.length}件を保存しました。`);
   });
 
-  // ★変更：既存クロノロの削除をclearCollectionBatch（一括処理）に変更
   btnRestoreEntriesTrigger.addEventListener('click', () => inputRestoreEntriesFile.click());
   inputRestoreEntriesFile.addEventListener('change', async (e) => {
     const file = e.target.files[0]; inputRestoreEntriesFile.value = '';
@@ -1132,12 +1259,10 @@
     finally { btnRestoreEntriesTrigger.disabled = false; btnRestoreEntriesTrigger.textContent = '⬆️ クロノロだけ復元'; }
   });
 
-  // ★変更：一括処理（バッチ）に変更し、処理中はボタンを無効化してラベルを表示
   btnDeleteAll.addEventListener('click', async () => {
     if (allEntries.length === 0) { showError('削除できるクロノロがありません。'); return; }
     if (!confirm(`クロノロ全${allEntries.length}件を削除します。\n定型文・チーム情報はそのまま残ります。\nこの操作は取り消せません。本当に削除しますか？`)) return;
     if (!confirm('最終確認：本当にすべてのクロノロを削除してよろしいですか？')) return;
-
     const originalText = btnDeleteAll.textContent;
     btnDeleteAll.disabled = true;
     btnDeleteAll.textContent = '削除中…';
