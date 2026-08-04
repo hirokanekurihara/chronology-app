@@ -216,9 +216,15 @@
         <div id="work-time-summary-content" class="text-sm text-gray-700 space-y-2"></div>
       </div>
 
-      <button id="btn-export-pdf" type="button" class="btn-base w-full mt-3 bg-gray-800 text-white rounded-lg font-bold py-3 shadow active:bg-gray-900">
-        📑 検索結果と集計をPDFで出力
-      </button>
+      <!-- ★変更：PDF出力とCSV出力のボタンを横並びに配置 -->
+      <div class="flex gap-2 mt-3">
+        <button id="btn-export-pdf" type="button" class="btn-base flex-1 bg-gray-800 text-white rounded-lg font-bold py-3 shadow active:bg-gray-900 text-sm">
+          📑 PDF出力
+        </button>
+        <button id="btn-export-csv" type="button" class="btn-base flex-1 bg-emerald-700 text-white rounded-lg font-bold py-3 shadow active:bg-emerald-800 text-sm">
+          📊 CSV出力
+        </button>
+      </div>
     </section>
 
     <section id="panel-settings" class="tab-panel hidden-panel p-3 space-y-4">
@@ -310,11 +316,26 @@
 <div id="pdf-render-root">
   <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
     <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
-    <div id="pdf-team-header" style="display:none; margin-bottom:8px; padding:8px 12px; background:#eff6ff; border-left:4px solid #2563eb;">
-      <div id="pdf-team-name" style="font-size:13px; font-weight:bold; color:#1e40af; margin:0 0 2px 0;"></div>
-      <div id="pdf-team-members" style="font-size:11px; color:#4b5563;"></div>
+
+    <!-- ★追加：ALLモード時、実際に出力対象に含まれる班だけをカードでまとめて表示 -->
+    <div id="pdf-all-teams-section" style="display:none; margin-bottom:12px;">
+      <div style="font-size:12px; font-weight:bold; color:#374151; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #e5e7eb;">
+        ■ 参加班・メンバー一覧
+      </div>
+      <div id="pdf-all-teams-cards" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
     </div>
-    <div id="pdf-export-date" style="font-size:11px; color:#6b7280;"></div>
+
+    <!-- ★変更：特定1班のみ表示時、班カラーに連動したカードデザインに -->
+    <div id="pdf-team-header" style="display:none; margin-bottom:8px;">
+      <div id="pdf-team-header-inner" style="padding:10px 14px; border-radius:6px; border-left:5px solid #2563eb; background:#eff6ff;">
+        <div id="pdf-team-name" style="font-size:14px; font-weight:900; color:#1e40af; margin:0 0 4px 0;"></div>
+        <div style="font-size:11px; color:#374151;">
+          <span style="font-weight:bold; color:#6b7280;">メンバー：</span><span id="pdf-team-members"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="pdf-export-date" style="font-size:11px; color:#6b7280; margin-top:4px;"></div>
   </div>
   <div id="pdf-worktime-section" style="display:none; margin:0 20px 14px 20px; padding:10px 14px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:4px;">
     <div style="font-size:13px; font-weight:bold; margin:0 0 6px 0;">勤務時間集計</div>
@@ -413,6 +434,7 @@
   const searchListEmpty = el('search-list-empty');
   const searchCount = el('search-count');
   const btnExportPdf = el('btn-export-pdf');
+  const btnExportCsv = el('btn-export-csv');
   const workTimeSummaryCard = el('work-time-summary-card');
   const workTimeSummaryContent = el('work-time-summary-content');
 
@@ -440,7 +462,10 @@
   const btnSignout = el('btn-signout');
 
   const pdfHeaderSection = el('pdf-header-section');
+  const pdfAllTeamsSection = el('pdf-all-teams-section');
+  const pdfAllTeamsCards = el('pdf-all-teams-cards');
   const pdfTeamHeader = el('pdf-team-header');
+  const pdfTeamHeaderInner = el('pdf-team-header-inner');
   const pdfTeamName = el('pdf-team-name');
   const pdfTeamMembers = el('pdf-team-members');
   const pdfExportDate = el('pdf-export-date');
@@ -450,7 +475,6 @@
   const pdfTableBodySection = el('pdf-table-body-section');
   const pdfExportBody = el('pdf-export-body');
 
-  // ★追加：班の編集機能に使う要素と状態
   const teamFormTitle = el('team-form-title');
   const btnCancelEditTeam = el('btn-cancel-edit-team');
   let editingTeamId = null;
@@ -685,7 +709,6 @@
     renderSearchResults([]);
   });
 
-  // ★追加：編集フォームを「新しい班を追加」の状態にリセットする
   function resetTeamForm() {
     editingTeamId = null;
     newTeamName.value = '';
@@ -696,7 +719,6 @@
   }
   btnCancelEditTeam.addEventListener('click', resetTeamForm);
 
-  // ★変更：editingTeamIdが入っていれば「更新」、なければ「新規追加」として動作する
   btnAddTeam.addEventListener('click', async () => {
     if (!currentUser) return;
     const name = newTeamName.value.trim();
@@ -714,7 +736,6 @@
     } catch(err) { if(!isTerminatedError(err)) showError('班の保存に失敗しました：' + (err.message||err)); }
   });
 
-  // ★変更：✏️編集ボタンを押すと、上部フォームにその班の内容を読み込んで編集モードに切り替える
   listTeams.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.btn-edit-team');
     if (editBtn) {
@@ -742,6 +763,7 @@
     }
   });
 
+  // ★変更：ALLモードの区切り行に、その班のメンバーも表示するように拡張
   function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
     let html = '';
     let prevDate = null;
@@ -755,12 +777,13 @@
       if (isAllMode && entry.team_id !== prevTeamId) {
         const t = allTeams.find(x => x.id === entry.team_id);
         const tName = t ? t.name : '（班未設定）';
+        const tMembers = (t && t.members) ? t.members : '';
         const c = t ? getTeamColor(entry.team_id) : null;
         const divBg = c ? c.divBg : '#f3f4f6';
         const divText = c ? c.text : '#374151';
         html += `<tr>
           <td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText};">
-            ▶ ${escapeHtml(tName)}
+            ▶ ${escapeHtml(tName)}${tMembers ? `<span style="font-weight:normal; font-size:10px; margin-left:6px;">（メンバー：${escapeHtml(tMembers)}）</span>` : ''}
           </td>
         </tr>`;
         prevTeamId = entry.team_id;
@@ -1001,6 +1024,7 @@
     searchListEmpty.textContent = '検索条件を指定して「検索する」を押してください';
   });
 
+  // ★変更：PDF出力（ALLモードは「実際に出力対象に含まれる班」だけをカード表示、単一班モードは班カラー連動デザインに）
   btnExportPdf.addEventListener('click', async () => {
     const isAllMode = activeTeamId === 'ALL';
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
@@ -1014,15 +1038,33 @@
       pdfExportDate.textContent = `出力日時：${formatDatePart(now)} ${formatTimePart(now)}`;
 
       if (isAllMode) {
-        pdfTeamHeader.style.display = 'block';
-        pdfTeamName.textContent = 'すべての班の記録（混合）';
-        pdfTeamMembers.textContent = allTeams.map(t => t.name).join('、');
+        pdfAllTeamsSection.style.display = 'block';
+        pdfTeamHeader.style.display = 'none';
+
+        // 実際に今回の出力対象に登場する班だけをカードにする（無関係な班は表示しない）
+        const usedTeamIds = [...new Set(target.map(e => e.team_id).filter(Boolean))];
+        const teamsInUse = allTeams.filter(t => usedTeamIds.includes(t.id));
+
+        pdfAllTeamsCards.innerHTML = teamsInUse.length > 0
+          ? teamsInUse.map(t => {
+              const c = getTeamColor(t.id) || { bg: '#f9fafb', border: '#e5e7eb', text: '#374151' };
+              return `<div style="flex:0 0 auto; min-width:160px; max-width:220px; padding:8px 12px; border-radius:6px; border:2px solid ${c.border}; background:${c.bg};">
+                <div style="font-size:12px; font-weight:900; color:${c.text}; margin-bottom:4px;">${escapeHtml(t.name)}</div>
+                <div style="font-size:10px; color:#4b5563; line-height:1.5;">${escapeHtml(t.members || '（メンバー未設定）')}</div>
+              </div>`;
+            }).join('')
+          : '<div style="font-size:11px; color:#9ca3af;">班情報が登録されていません。</div>';
       } else {
+        pdfAllTeamsSection.style.display = 'none';
         const activeTeam = allTeams.find(t => t.id === activeTeamId);
         if (activeTeam) {
+          const c = getTeamColor(activeTeamId) || { bg:'#eff6ff', border:'#2563eb', text:'#1e40af' };
           pdfTeamHeader.style.display = 'block';
-          pdfTeamName.textContent = `班名：${activeTeam.name}`;
-          pdfTeamMembers.textContent = `メンバー：${activeTeam.members || '（未設定）'}`;
+          pdfTeamHeaderInner.style.background = c.bg;
+          pdfTeamHeaderInner.style.borderLeftColor = c.border;
+          pdfTeamName.style.color = c.text;
+          pdfTeamName.textContent = activeTeam.name;
+          pdfTeamMembers.textContent = activeTeam.members || '（未設定）';
         } else {
           pdfTeamHeader.style.display = 'none';
         }
@@ -1120,8 +1162,45 @@
     } catch(err) {
       console.error(err); showError('PDFの出力に失敗しました：' + (err.message||err));
     } finally {
-      btnExportPdf.disabled = false; btnExportPdf.textContent = '📑 検索結果と集計をPDFで出力';
+      btnExportPdf.disabled = false; btnExportPdf.textContent = '📑 PDF出力';
     }
+  });
+
+  // ★追加：CSV出力（日時・発・受・内容の4列のみ。勤務開始/終了はcontentにすでに文字として入っているのでそのまま反映される）
+  btnExportCsv.addEventListener('click', () => {
+    const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
+    if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
+
+    function csvCell(val) {
+      const s = String(val == null ? '' : val);
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+
+    const rows = [['日時', '発', '受', '内容'].map(csvCell).join(',')];
+    target.forEach(e => {
+      const d = toDate(e.timestamp);
+      const dateTimeStr = `${formatDatePart(d)} ${formatTimePart(d)}`;
+      rows.push([
+        csvCell(dateTimeStr),
+        csvCell(e.from || ''),
+        csvCell(e.to || ''),
+        csvCell(e.content || '')
+      ].join(','));
+    });
+
+    const bom = '\uFEFF'; // Excelなどで日本語が文字化けしないようにするための処理
+    const csvContent = bom + rows.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now = new Date();
+    a.href = url;
+    a.download = `経時記録_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showSuccess(`CSVファイルを出力しました（${target.length}件）。`);
   });
 
   function downloadJson(data, filename) {
