@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-  html, body { overflow-x: hidden; }
+  html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
   .safe-top { padding-top: env(safe-area-inset-top); }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
@@ -30,7 +30,7 @@
   #pdf-render-root { position: absolute; left: -9999px; top: 0; width: 720px; background: #ffffff; font-family: 'Noto Sans JP', sans-serif; color: #1f2937; }
 </style>
 </head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gray-100 text-gray-800 flex flex-col h-full">
 
 <div id="signin-overlay" class="fixed inset-0 z-50 bg-gray-900/90 flex items-center justify-center p-6">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center">
@@ -48,7 +48,6 @@
   </div>
 </div>
 
-<!-- ★追加：記録編集用のポップアップ（モーダル） -->
 <div id="edit-entry-modal" class="fixed inset-0 z-50 bg-gray-900/60 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
     <h2 class="font-bold text-gray-800 border-b pb-2">✏️ 記録の編集</h2>
@@ -77,9 +76,9 @@
   </div>
 </div>
 
-<div id="app-root" class="hidden flex-1 flex flex-col min-h-screen">
+<div id="app-root" class="hidden flex-col h-full overflow-hidden">
 
-  <header class="safe-top bg-blue-600 text-white shadow-md sticky top-0 z-30">
+  <header class="safe-top bg-blue-600 text-white shadow-md shrink-0 z-30">
     <div class="px-3 pt-2 pb-2 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         <span class="text-lg">🕒</span>
@@ -110,7 +109,7 @@
     <span id="success-banner-text"></span>
   </div>
 
-  <main class="flex-1 overflow-y-auto pb-24">
+  <main class="flex-1 overflow-y-auto pb-6">
 
     <section id="panel-record" class="tab-panel p-3 space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
@@ -334,7 +333,7 @@
     </section>
   </main>
 
-  <nav class="safe-bottom fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 flex">
+  <nav class="safe-bottom shrink-0 z-30 bg-white border-t border-gray-200 flex">
     <button id="nav-record" data-panel="panel-record" class="nav-btn flex-1 btn-base flex flex-col items-center justify-center gap-0.5 py-2 text-blue-600"><span class="text-lg">📝</span><span class="text-[11px] font-semibold">記録</span></button>
     <button id="nav-search" data-panel="panel-search" class="nav-btn flex-1 btn-base flex flex-col items-center justify-center gap-0.5 py-2 text-gray-400"><span class="text-lg">🔍</span><span class="text-[11px] font-semibold">検索/PDF</span></button>
     <button id="nav-settings" data-panel="panel-settings" class="nav-btn flex-1 btn-base flex flex-col items-center justify-center gap-0.5 py-2 text-gray-400"><span class="text-lg">⚙️</span><span class="text-[11px] font-semibold">設定</span></button>
@@ -505,7 +504,6 @@
   const btnCancelEditTeam = el('btn-cancel-edit-team');
   let editingTeamId = null;
 
-  // ★追加：記録編集用モーダル関連の要素
   const editEntryModal = el('edit-entry-modal');
   const editEntryDatetime = el('edit-entry-datetime');
   const editEntryFrom = el('edit-entry-from');
@@ -824,7 +822,6 @@
         prevTeamId = entry.team_id;
       }
 
-      // ★変更：編集ボタン（✏️）を削除ボタンの隣に追加
       const actionBtns = deletable
         ? `<span class="inline-flex gap-2 ml-2 align-middle">
              <button data-entry-id="${entry.id}" class="btn-edit-entry text-blue-400 hover:text-blue-600 text-xs">✏️</button>
@@ -881,7 +878,6 @@
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
-  // ★追加：記録の編集・削除ボタンが押されたときの処理
   recordListBody.addEventListener('click', async (e) => {
     if (!currentUser) return;
 
@@ -908,13 +904,11 @@
     }
   });
 
-  // ★追加：編集モーダルのキャンセルボタン
   btnEditCancel.addEventListener('click', () => {
     editEntryModal.classList.add('hidden');
     editingEntryId = null;
   });
 
-  // ★追加：編集モーダルの保存ボタン（entry_type・team_id・createdAtは変更しない）
   btnEditSave.addEventListener('click', async () => {
     if (!editingEntryId || !currentUser) return;
     const from = editEntryFrom.value.trim();
@@ -1257,6 +1251,7 @@
     }
   });
 
+  // ★変更：CSVは「時間（時:分のみ）・内容」の2列だけ出力。場所（発・受）は手動記載の運用のため含めない
   btnExportCsv.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
@@ -1266,14 +1261,14 @@
       return '"' + s.replace(/"/g, '""') + '"';
     }
 
-    const rows = [['日時', '発', '受', '内容'].map(csvCell).join(',')];
+    // ヘッダー：時間, 内容 の2列のみ
+    const rows = [['時間', '内容'].map(csvCell).join(',')];
+
     target.forEach(e => {
       const d = toDate(e.timestamp);
-      const dateTimeStr = `${formatDatePart(d)} ${formatTimePart(d)}`;
+      const timeStr = formatTimePart(d); // 「時:分」のみ（日付は含めない）
       rows.push([
-        csvCell(dateTimeStr),
-        csvCell(e.from || ''),
-        csvCell(e.to || ''),
+        csvCell(timeStr),
         csvCell(e.content || '')
       ].join(','));
     });
@@ -1285,12 +1280,12 @@
     const a = document.createElement('a');
     const now = new Date();
     a.href = url;
-    a.download = `経時記録_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+    a.download = `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showSuccess(`CSVファイルを出力しました（${target.length}件）。`);
+    showSuccess(`CSVファイルを出力しました（${target.length}件）。時間列・内容列をそれぞれ選択してコピペしてご利用ください。`);
   });
 
   function downloadJson(data, filename) {
