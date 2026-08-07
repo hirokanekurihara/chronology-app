@@ -39,12 +39,24 @@
     </div>
     <h1 class="text-xl font-bold mb-1">クロノロジー</h1>
     <p class="text-sm text-gray-500 mb-6">災害対応の経時記録アプリ<br>ご利用にはGoogleアカウントでのサインインが必要です。</p>
+
     <button id="btn-google-signin" type="button"
-      class="btn-base w-full flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-3 font-medium shadow-sm hover:bg-gray-50 active:bg-gray-100">
+      class="btn-base w-full flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-3 font-medium shadow-sm hover:bg-gray-50 active:bg-gray-100 mb-3">
       <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.5 3 24 3 16 3 9 7.6 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14-5l-6.6-5.6c-2 1.4-4.6 2.2-7.4 2.2-5.4 0-9.9-3.3-11.3-8H6.4C9 39.5 15.9 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.4 5.5-6.3 6.9l6.6 5.6C39.4 37.2 45 32.1 45 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
       Googleでサインイン
     </button>
+
+    <!-- ★追加：最終手段としてのポップアップ方式の予備ボタン（missing initial stateエラーが出る可能性あり） -->
+    <button id="btn-google-signin-popup" type="button"
+      class="btn-base w-full flex items-center justify-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-100 active:bg-gray-200">
+      予備：ポップアップでサインイン（最終手段）
+    </button>
+
     <p id="signin-error" class="mt-4 text-sm text-red-600 hidden"></p>
+
+    <button id="btn-reset-cache" type="button" class="mt-6 text-xs text-gray-400 underline p-2">
+      画面が進まない場合はこちら（キャッシュをリセット）
+    </button>
   </div>
 </div>
 
@@ -389,7 +401,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     initializeFirestore, persistentLocalCache, persistentSingleTabManager,
     collection, doc, addDoc, setDoc, deleteDoc, getDocs, writeBatch,
@@ -420,7 +432,9 @@
   const signinOverlay = el('signin-overlay');
   const appRoot = el('app-root');
   const btnGoogleSignin = el('btn-google-signin');
+  const btnGoogleSigninPopup = el('btn-google-signin-popup');
   const signinError = el('signin-error');
+  const btnResetCache = el('btn-reset-cache');
   const errorBanner = el('error-banner');
   const errorBannerText = el('error-banner-text');
   const errorBannerClose = el('error-banner-close');
@@ -522,6 +536,29 @@
   let isNetworkEnabled = true;
   let lastSearchResults = [];
 
+  btnResetCache.addEventListener('click', async () => {
+    btnResetCache.textContent = 'リセット処理中…';
+    btnResetCache.disabled = true;
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) { await r.unregister(); }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) { await caches.delete(key); }
+      }
+      localStorage.clear();
+      sessionStorage.clear();
+      const baseUrl = window.location.href.split('?')[0];
+      window.location.href = baseUrl + '?reset=' + Date.now();
+    } catch (e) {
+      alert('自動リセットに失敗しました。お手数ですが、設定アプリからSafariのWebサイトデータを手動で削除してください。');
+      btnResetCache.textContent = '画面が進まない場合はこちら（キャッシュをリセット）';
+      btnResetCache.disabled = false;
+    }
+  });
+
   const TEAM_COLORS = [
     { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', divBg: '#dbeafe' },
     { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', divBg: '#fef3c7' },
@@ -618,6 +655,12 @@
     signinError.classList.add('hidden');
     try { await signInWithRedirect(auth, googleProvider); }
     catch(err) { signinError.textContent = 'サインインに失敗しました：' + (err.message || err); signinError.classList.remove('hidden'); }
+  });
+
+  btnGoogleSigninPopup.addEventListener('click', async () => {
+    signinError.classList.add('hidden');
+    try { await signInWithPopup(auth, googleProvider); }
+    catch(err) { signinError.textContent = 'ポップアップでのサインインに失敗しました（この端末ではこの方式も使えない可能性があります）：' + (err.message || err); signinError.classList.remove('hidden'); }
   });
 
   getRedirectResult(auth).catch((err) => {
@@ -1251,7 +1294,6 @@
     }
   });
 
-  // ★変更：CSVは「時間（時:分のみ）・内容」の2列だけ出力。場所（発・受）は手動記載の運用のため含めない
   btnExportCsv.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
@@ -1261,12 +1303,11 @@
       return '"' + s.replace(/"/g, '""') + '"';
     }
 
-    // ヘッダー：時間, 内容 の2列のみ
     const rows = [['時間', '内容'].map(csvCell).join(',')];
 
     target.forEach(e => {
       const d = toDate(e.timestamp);
-      const timeStr = formatTimePart(d); // 「時:分」のみ（日付は含めない）
+      const timeStr = formatTimePart(d);
       rows.push([
         csvCell(timeStr),
         csvCell(e.content || '')
