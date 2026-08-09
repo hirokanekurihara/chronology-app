@@ -46,7 +46,6 @@
       Googleでサインイン
     </button>
 
-    <!-- ★追加：最終手段としてのポップアップ方式の予備ボタン（missing initial stateエラーが出る可能性あり） -->
     <button id="btn-google-signin-popup" type="button"
       class="btn-base w-full flex items-center justify-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-100 active:bg-gray-200">
       予備：ポップアップでサインイン（最終手段）
@@ -352,6 +351,7 @@
   </nav>
 </div>
 
+<!-- ★変更：発・受の列を広く、内容を少し狭く再配分（文字の重なり対策） -->
 <div id="pdf-render-root">
   <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
     <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
@@ -378,9 +378,15 @@
     <div style="font-size:13px; font-weight:bold; margin:0 0 6px 0;">勤務時間集計</div>
     <div id="pdf-work-time-content" style="font-size:11px; line-height:1.7;"></div>
   </div>
+
   <div id="pdf-table-header-section" style="padding:0 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
-      <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
+      <colgroup>
+        <col style="width:16%">
+        <col style="width:19%">
+        <col style="width:19%">
+        <col style="width:46%">
+      </colgroup>
       <thead>
         <tr style="background:#e5e7eb;">
           <th style="border:1px solid #9ca3af; padding:7px 6px;">時間</th>
@@ -393,7 +399,12 @@
   </div>
   <div id="pdf-table-body-section" style="padding:0 20px 20px 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
-      <colgroup><col style="width:18%"><col style="width:13%"><col style="width:13%"><col style="width:56%"></colgroup>
+      <colgroup>
+        <col style="width:16%">
+        <col style="width:19%">
+        <col style="width:19%">
+        <col style="width:46%">
+      </colgroup>
       <tbody id="pdf-export-body"></tbody>
     </table>
   </div>
@@ -840,6 +851,7 @@
     }
   });
 
+  // ★変更：各セルに行間・折り返し設定を明示的に追加（文字の重なり・崩れ対策）
   function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
     let html = '';
     let prevDate = null;
@@ -858,7 +870,7 @@
         const divBg = c ? c.divBg : '#f3f4f6';
         const divText = c ? c.text : '#374151';
         html += `<tr>
-          <td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText};">
+          <td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText}; line-height:1.5;">
             ▶ ${escapeHtml(tName)}${tMembers ? `<span style="font-weight:normal; font-size:10px; margin-left:6px;">（メンバー：${escapeHtml(tMembers)}）</span>` : ''}
           </td>
         </tr>`;
@@ -890,13 +902,13 @@
       }
 
       html += `<tr class="${rowClass}" style="${rowStyle}">
-        <td class="py-2 px-1 text-center">
-          ${showDate ? `<div class="text-[10px] text-blue-600 font-bold leading-tight">${escapeHtml(dateStr)}</div>` : ''}
-          <div class="text-xs text-gray-700 leading-tight">${escapeHtml(timeStr)}</div>
+        <td class="py-2 px-1 text-center" style="line-height:1.5;">
+          ${showDate ? `<div class="text-[10px] text-blue-600 font-bold" style="line-height:1.3;">${escapeHtml(dateStr)}</div>` : ''}
+          <div class="text-xs text-gray-700" style="line-height:1.3;">${escapeHtml(timeStr)}</div>
         </td>
-        <td class="py-2 px-1 text-center text-xs break-all">${escapeHtml(entry.from)}</td>
-        <td class="py-2 px-1 text-center text-xs break-all">${escapeHtml(entry.to)}</td>
-        <td class="py-2 px-2 text-sm whitespace-pre-wrap break-words">${teamBadge}${escapeHtml(entry.content)}${actionBtns}</td>
+        <td class="py-2 px-1 text-center text-xs" style="line-height:1.5; word-break:break-word; overflow-wrap:break-word;">${escapeHtml(entry.from)}</td>
+        <td class="py-2 px-1 text-center text-xs" style="line-height:1.5; word-break:break-word; overflow-wrap:break-word;">${escapeHtml(entry.to)}</td>
+        <td class="py-2 px-2 text-sm whitespace-pre-wrap" style="line-height:1.6; word-break:break-word; overflow-wrap:break-word;">${teamBadge}${escapeHtml(entry.content)}${actionBtns}</td>
       </tr>`;
     });
     return html;
@@ -1208,6 +1220,12 @@
 
       pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false, isAllMode });
 
+      // ★追加：Webフォント（Noto Sans JP）の読み込み完了を待つ（フォント未読み込みによる文字崩れ対策）
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch(e) {}
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const SCALE = 2;
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1219,10 +1237,12 @@
       const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
       const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
 
-      const headerCanvas = await html2canvas(pdfHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
-      const worktimeCanvas = summary.hasAnyData ? await html2canvas(pdfWorktimeSection, { scale: SCALE, backgroundColor: '#ffffff' }) : null;
-      const tableHeaderCanvas = await html2canvas(pdfTableHeaderSection, { scale: SCALE, backgroundColor: '#ffffff' });
-      const bodyCanvas = await html2canvas(pdfTableBodySection, { scale: SCALE, backgroundColor: '#ffffff' });
+      // ★変更：foreignObjectRenderingを有効化し、日本語文字の重なり・崩れを防止する
+      const CANVAS_OPTS = { scale: SCALE, backgroundColor: '#ffffff', useCORS: true, foreignObjectRendering: true };
+      const headerCanvas = await html2canvas(pdfHeaderSection, CANVAS_OPTS);
+      const worktimeCanvas = summary.hasAnyData ? await html2canvas(pdfWorktimeSection, CANVAS_OPTS) : null;
+      const tableHeaderCanvas = await html2canvas(pdfTableHeaderSection, CANVAS_OPTS);
+      const bodyCanvas = await html2canvas(pdfTableBodySection, CANVAS_OPTS);
 
       const headerHmm = pxToMm(headerCanvas.height);
       const worktimeHmm = worktimeCanvas ? pxToMm(worktimeCanvas.height) : 0;
