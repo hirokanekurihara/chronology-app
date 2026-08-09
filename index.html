@@ -351,7 +351,6 @@
   </nav>
 </div>
 
-<!-- ★変更：発・受の列を広く、内容を少し狭く再配分（文字の重なり対策） -->
 <div id="pdf-render-root">
   <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
     <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
@@ -851,7 +850,6 @@
     }
   });
 
-  // ★変更：各セルに行間・折り返し設定を明示的に追加（文字の重なり・崩れ対策）
   function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
     let html = '';
     let prevDate = null;
@@ -1220,7 +1218,6 @@
 
       pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false, isAllMode });
 
-      // ★追加：Webフォント（Noto Sans JP）の読み込み完了を待つ（フォント未読み込みによる文字崩れ対策）
       if (document.fonts && document.fonts.ready) {
         try { await document.fonts.ready; } catch(e) {}
       }
@@ -1237,8 +1234,9 @@
       const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
       const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
 
-      // ★変更：foreignObjectRenderingを有効化し、日本語文字の重なり・崩れを防止する
-      const CANVAS_OPTS = { scale: SCALE, backgroundColor: '#ffffff', useCORS: true, foreignObjectRendering: true };
+      // ★変更：白紙エラーの原因だったforeignObjectRenderingを削除し、元の安全な描画方式に戻す
+      const CANVAS_OPTS = { scale: SCALE, backgroundColor: '#ffffff', useCORS: true };
+
       const headerCanvas = await html2canvas(pdfHeaderSection, CANVAS_OPTS);
       const worktimeCanvas = summary.hasAnyData ? await html2canvas(pdfWorktimeSection, CANVAS_OPTS) : null;
       const tableHeaderCanvas = await html2canvas(pdfTableHeaderSection, CANVAS_OPTS);
