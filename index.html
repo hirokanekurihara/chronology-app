@@ -91,7 +91,7 @@
 <div id="app-root" class="hidden flex-col h-full overflow-hidden">
 
   <header class="safe-top bg-blue-600 text-white shadow-md shrink-0 z-30">
-    <div class="px-3 pt-2 pb-2 flex items-center justify-between gap-2">
+    <div class="px-3 pt-2 pb-1.5 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         <span class="text-lg">🕒</span>
         <h1 class="font-bold text-base leading-tight truncate">クロノロジー</h1>
@@ -104,12 +104,18 @@
         </button>
       </div>
     </div>
-    <div class="bg-blue-800 px-3 py-1.5 flex items-center justify-between text-white text-xs shadow-inner">
-      <span class="font-semibold whitespace-nowrap mr-2">表示・入力する班:</span>
-      <select id="header-team-select" class="flex-1 bg-blue-700 border border-blue-500 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 truncate">
-        <option value="">（班を選択してください）</option>
-        <option value="ALL">すべての班を表示（入力不可）</option>
-      </select>
+    <div class="bg-blue-800 px-3 pb-1.5 pt-1 text-xs text-white shadow-inner">
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-semibold whitespace-nowrap mr-2">表示・入力する班:</span>
+        <select id="header-team-select" class="flex-1 bg-blue-700 border border-blue-500 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 truncate">
+          <option value="">（班を選択してください）</option>
+          <option value="ALL">すべての班を表示（入力不可）</option>
+        </select>
+      </div>
+      <label class="inline-flex items-center gap-1 text-[10px] text-blue-100">
+        <input id="header-show-archived" type="checkbox" class="rounded border-blue-300 text-blue-500 focus:ring-blue-300" />
+        <span>終了した班も一覧に含める</span>
+      </label>
     </div>
   </header>
 
@@ -123,6 +129,7 @@
 
   <main class="flex-1 overflow-y-auto pb-6">
 
+    <!-- 記録タブ -->
     <section id="panel-record" class="tab-panel p-3 space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>📝</span>新しい記録</h2>
@@ -204,6 +211,7 @@
       </div>
     </section>
 
+    <!-- 検索 / PDFタブ -->
     <section id="panel-search" class="tab-panel hidden-panel p-3 space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔍</span>検索条件</h2>
@@ -266,6 +274,7 @@
       </div>
     </section>
 
+    <!-- 設定タブ -->
     <section id="panel-settings" class="tab-panel hidden-panel p-3 space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3">
         <img id="user-photo" src="" alt="" class="w-10 h-10 rounded-full bg-gray-200 hidden">
@@ -276,6 +285,7 @@
         </div>
       </div>
 
+      <!-- 班の管理 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
         <p class="text-xs text-gray-500">※表示・入力する班の切り替えは、画面一番上のメニューで行ってください。</p>
@@ -283,17 +293,20 @@
           <p id="team-form-title" class="text-xs font-semibold text-gray-500">新しい班を追加</p>
           <input id="new-team-name" type="text" placeholder="班の名前（例：第1救護班A）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <input id="new-team-members" type="text" placeholder="メンバー（例：山田太郎、鈴木花子）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <textarea id="new-team-memo" rows="2" placeholder="活動メモ（例：2024/1/5 能登半島地震 第3次支援隊、DMAT出動など）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
           <div class="flex gap-2">
             <button id="btn-add-team" type="button" class="btn-base flex-1 bg-blue-600 text-white rounded-lg font-semibold py-2 active:bg-blue-700">＋ 班を追加</button>
             <button id="btn-cancel-edit-team" type="button" class="btn-base hidden px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold py-2 active:bg-gray-300">キャンセル</button>
           </div>
         </div>
-        <div class="border-t pt-3">
-          <p class="text-xs font-semibold text-gray-500 mb-2">登録済みの班（色は一覧・PDFと連動／✏️で編集できます）</p>
-          <ul id="list-teams" class="space-y-1"></ul>
+        <div class="border-t pt-3 space-y-2">
+          <p class="text-xs font-semibold text-gray-500">登録済みの班（✏️で編集／終了にすると上部メニューから基本的に隠れます）</p>
+          <input id="team-search" type="text" placeholder="班名・メンバー・活動メモで検索" class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <ul id="list-teams" class="mt-2 space-y-1"></ul>
         </div>
       </div>
 
+      <!-- 定型文 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-4">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
         <div>
@@ -322,6 +335,7 @@
         </div>
       </div>
 
+      <!-- クロノロ入れ替え -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
         <p class="text-xs text-gray-500">※画面一番上で選択している班のクロノロだけが対象になります。</p>
@@ -331,6 +345,7 @@
         <button id="btn-delete-all" type="button" class="btn-base w-full bg-orange-50 text-orange-700 border border-orange-200 rounded-lg font-semibold py-2.5 active:bg-orange-100">🗑 クロノロだけを削除する（定型文・班は残ります）</button>
       </div>
 
+      <!-- 全体バックアップ -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
         <p class="text-xs text-gray-500">記録・定型文・班情報をすべてまとめて保存・復元します。</p>
@@ -368,6 +383,9 @@
         <div id="pdf-team-name" style="font-size:14px; font-weight:900; color:#1e40af; margin:0 0 4px 0;"></div>
         <div style="font-size:11px; color:#374151;">
           <span style="font-weight:bold; color:#6b7280;">メンバー：</span><span id="pdf-team-members"></span>
+        </div>
+        <div id="pdf-team-memo-row" style="display:none; font-size:11px; color:#6b7280; margin-top:3px;">
+          <span style="font-weight:bold;">メモ：</span><span id="pdf-team-memo"></span>
         </div>
       </div>
     </div>
@@ -454,6 +472,7 @@
   const syncBadge = el('sync-badge');
   const btnNetworkToggle = el('btn-network-toggle');
   const headerTeamSelect = el('header-team-select');
+  const headerShowArchived = el('header-show-archived');
   const navButtons = document.querySelectorAll('.nav-btn');
   const tabPanels = document.querySelectorAll('.tab-panel');
 
@@ -493,8 +512,13 @@
   const userEmail = el('user-email');
   const newTeamName = el('new-team-name');
   const newTeamMembers = el('new-team-members');
+  const newTeamMemo = el('new-team-memo');
   const btnAddTeam = el('btn-add-team');
   const listTeams = el('list-teams');
+  const teamFormTitle = el('team-form-title');
+  const btnCancelEditTeam = el('btn-cancel-edit-team');
+  const teamSearch = el('team-search');
+
   const newTemplateContent = el('new-template-content');
   const newTemplateFrom = el('new-template-from');
   const newTemplateTo = el('new-template-to');
@@ -518,6 +542,8 @@
   const pdfTeamHeaderInner = el('pdf-team-header-inner');
   const pdfTeamName = el('pdf-team-name');
   const pdfTeamMembers = el('pdf-team-members');
+  const pdfTeamMemoRow = el('pdf-team-memo-row');
+  const pdfTeamMemo = el('pdf-team-memo');
   const pdfExportDate = el('pdf-export-date');
   const pdfWorktimeSection = el('pdf-worktime-section');
   const pdfWorkTimeContent = el('pdf-work-time-content');
@@ -525,8 +551,6 @@
   const pdfTableBodySection = el('pdf-table-body-section');
   const pdfExportBody = el('pdf-export-body');
 
-  const teamFormTitle = el('team-form-title');
-  const btnCancelEditTeam = el('btn-cancel-edit-team');
   let editingTeamId = null;
 
   const editEntryModal = el('edit-entry-modal');
@@ -546,29 +570,7 @@
   let activeTeamId = localStorage.getItem('chronolo_active_team') || '';
   let isNetworkEnabled = true;
   let lastSearchResults = [];
-
-  btnResetCache.addEventListener('click', async () => {
-    btnResetCache.textContent = 'リセット処理中…';
-    btnResetCache.disabled = true;
-    try {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) { await r.unregister(); }
-      }
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        for (const key of keys) { await caches.delete(key); }
-      }
-      localStorage.clear();
-      sessionStorage.clear();
-      const baseUrl = window.location.href.split('?')[0];
-      window.location.href = baseUrl + '?reset=' + Date.now();
-    } catch (e) {
-      alert('自動リセットに失敗しました。お手数ですが、設定アプリからSafariのWebサイトデータを手動で削除してください。');
-      btnResetCache.textContent = '画面が進まない場合はこちら（キャッシュをリセット）';
-      btnResetCache.disabled = false;
-    }
-  });
+  headerShowArchived.checked = localStorage.getItem('chronolo_show_archived') === '1';
 
   const TEAM_COLORS = [
     { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', divBg: '#dbeafe' },
@@ -652,6 +654,29 @@
   function escapeHtml(str) {
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
+
+  btnResetCache.addEventListener('click', async () => {
+    btnResetCache.textContent = 'リセット処理中…';
+    btnResetCache.disabled = true;
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) { await r.unregister(); }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) { await caches.delete(key); }
+      }
+      localStorage.clear();
+      sessionStorage.clear();
+      const baseUrl = window.location.href.split('?')[0];
+      window.location.href = baseUrl + '?reset=' + Date.now();
+    } catch (e) {
+      alert('自動リセットに失敗しました。お手数ですが、設定アプリからSafariのWebサイトデータを手動で削除してください。');
+      btnResetCache.textContent = '画面が進まない場合はこちら（キャッシュをリセット）';
+      btnResetCache.disabled = false;
+    }
+  });
 
   function switchTab(panelId) {
     tabPanels.forEach(p => p.classList.toggle('hidden-panel', p.id !== panelId));
@@ -749,7 +774,10 @@
 
     teamsUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'teams'), orderBy('createdAtLocal','asc')),
-      (snap) => { allTeams = snap.docs.map(d => ({id:d.id,...d.data()})); renderTeamUI(); },
+      (snap) => {
+        allTeams = snap.docs.map(d => ({id:d.id,...d.data()}));
+        renderTeamUI();
+      },
       (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('班情報の取得に失敗しました：', err); }
     );
   }
@@ -761,8 +789,27 @@
   }
 
   function renderTeamUI() {
-    headerTeamSelect.innerHTML = '<option value="">（班を選択してください）</option><option value="ALL">すべての班を表示（入力不可）</option>' +
-      allTeams.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+    const showArchived = headerShowArchived.checked;
+    const baseOptions = [
+      '<option value="">（班を選択してください）</option>',
+      '<option value="ALL">すべての班を表示（入力不可）</option>'
+    ];
+
+    const activeTeams = allTeams.filter(t => !t.isArchived);
+    const archivedTeams = allTeams.filter(t => t.isArchived);
+
+    activeTeams.forEach(t => {
+      baseOptions.push(`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`);
+    });
+
+    if (showArchived && archivedTeams.length > 0) {
+      baseOptions.push('<option value="__sep__" disabled>―― 終了した班 ――</option>');
+      archivedTeams.forEach(t => {
+        baseOptions.push(`<option value="${escapeHtml(t.id)}">[過去] ${escapeHtml(t.name)}</option>`);
+      });
+    }
+
+    headerTeamSelect.innerHTML = baseOptions.join('');
 
     if (activeTeamId !== 'ALL' && activeTeamId !== '' && !allTeams.find(t => t.id === activeTeamId)) {
       activeTeamId = '';
@@ -770,18 +817,37 @@
     }
     headerTeamSelect.value = activeTeamId;
 
-    listTeams.innerHTML = allTeams.length === 0
-      ? '<li class="text-xs text-gray-400">登録済みの班はありません</li>'
-      : allTeams.map((t) => {
+    const keyword = teamSearch.value.trim().toLowerCase();
+    const filteredTeams = allTeams.filter(t => {
+      if (!keyword) return true;
+      const text = `${t.name || ''} ${t.members || ''} ${t.memo || ''}`.toLowerCase();
+      return text.includes(keyword);
+    });
+
+    listTeams.innerHTML = filteredTeams.length === 0
+      ? '<li class="text-xs text-gray-400">該当する班はありません</li>'
+      : filteredTeams.map((t) => {
           const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' };
-          return `<li class="flex items-center justify-between rounded-lg px-3 py-2 text-sm ${t.id === activeTeamId ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
+          const isActiveHere = t.id === activeTeamId;
+          const statusBadge = t.isArchived
+            ? '<span class="ml-1 inline-block text-[10px] px-1 rounded bg-gray-500 text-white align-middle">終了</span>'
+            : '';
+          const created = t.createdAtLocal ? formatDatePart(new Date(t.createdAtLocal)) : '';
+          return `<li class="flex items-start justify-between rounded-lg px-3 py-2 text-sm ${isActiveHere ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
             <div class="min-w-0 mr-2">
-              <p class="font-semibold truncate" style="color:${c.text};">${escapeHtml(t.name)}${t.id === activeTeamId ? ' <span class="text-xs font-normal">（この端末で使用中）</span>' : ''}</p>
-              <p class="text-xs text-gray-500 truncate">${escapeHtml(t.members||'（メンバー未設定）')}</p>
+              <p class="font-semibold truncate" style="color:${c.text};">
+                ${escapeHtml(t.name)}${statusBadge}${isActiveHere ? ' <span class="text-[10px] font-normal text-blue-700">（この端末で使用中）</span>' : ''}
+              </p>
+              <p class="text-[11px] text-gray-500 truncate">${escapeHtml(t.members||'（メンバー未設定）')}</p>
+              ${t.memo ? `<p class="text-[11px] text-gray-500 mt-0.5 line-clamp-2">📌 ${escapeHtml(t.memo)}</p>` : ''}
+              ${created ? `<p class="text-[10px] text-gray-400 mt-0.5">作成日: ${escapeHtml(created)}</p>` : ''}
             </div>
-            <div class="flex items-center gap-3 shrink-0">
+            <div class="flex flex-col items-end gap-1 shrink-0">
               <button data-team-id="${t.id}" class="btn-edit-team text-blue-500 hover:text-blue-700 text-xs font-bold whitespace-nowrap">✏️ 編集</button>
-              <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-xs font-bold">削除</button>
+              <button data-team-id="${t.id}" class="btn-toggle-archive text-xs ${t.isArchived ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'} font-semibold whitespace-nowrap">
+                ${t.isArchived ? '現役に戻す' : '終了にする'}
+              </button>
+              <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-[11px] font-bold mt-0.5">削除</button>
             </div>
           </li>`;
         }).join('');
@@ -797,10 +863,25 @@
     renderSearchResults([]);
   });
 
+  headerShowArchived.addEventListener('change', () => {
+    localStorage.setItem('chronolo_show_archived', headerShowArchived.checked ? '1' : '0');
+    if (!headerShowArchived.checked) {
+      const activeTeamObj = allTeams.find(t => t.id === activeTeamId);
+      if (activeTeamObj && activeTeamObj.isArchived) {
+        activeTeamId = '';
+        localStorage.removeItem('chronolo_active_team');
+      }
+    }
+    renderTeamUI();
+  });
+
+  teamSearch.addEventListener('input', () => renderTeamUI());
+
   function resetTeamForm() {
     editingTeamId = null;
     newTeamName.value = '';
     newTeamMembers.value = '';
+    newTeamMemo.value = '';
     teamFormTitle.textContent = '新しい班を追加';
     btnAddTeam.textContent = '＋ 班を追加';
     btnCancelEditTeam.classList.add('hidden');
@@ -811,13 +892,20 @@
     if (!currentUser) return;
     const name = newTeamName.value.trim();
     const members = newTeamMembers.value.trim();
+    const memo = newTeamMemo.value.trim();
     if (!name) { showError('班の名前を入力してください。'); return; }
     try {
       if (editingTeamId) {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', editingTeamId), { name, members }, { merge: true });
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', editingTeamId), { name, members, memo }, { merge: true });
         showSuccess('班の情報を更新しました。');
       } else {
-        await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name, members, createdAtLocal: Date.now() });
+        await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), {
+          name,
+          members,
+          memo,
+          isArchived: false,
+          createdAtLocal: Date.now()
+        });
         showSuccess('班を追加しました。');
       }
       resetTeamForm();
@@ -826,6 +914,9 @@
 
   listTeams.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.btn-edit-team');
+    const toggleBtn = e.target.closest('.btn-toggle-archive');
+    const delBtn = e.target.closest('.btn-delete-team');
+
     if (editBtn) {
       const tId = editBtn.dataset.teamId;
       const team = allTeams.find(t => t.id === tId);
@@ -833,6 +924,7 @@
         editingTeamId = tId;
         newTeamName.value = team.name;
         newTeamMembers.value = team.members || '';
+        newTeamMemo.value = team.memo || '';
         teamFormTitle.textContent = '班の情報を編集';
         btnAddTeam.textContent = '✓ 更新する';
         btnCancelEditTeam.classList.remove('hidden');
@@ -841,9 +933,25 @@
       return;
     }
 
-    const delBtn = e.target.closest('.btn-delete-team');
+    if (toggleBtn && currentUser) {
+      const tId = toggleBtn.dataset.teamId;
+      const team = allTeams.find(t => t.id === tId);
+      if (!team) return;
+      const toArchived = !team.isArchived;
+      if (toArchived) {
+        if (!confirm('この班を「終了した班」として扱いますか？\n\n・上部メニューからは基本的に非表示になります（チェックを入れれば表示可能）\n・これまでの記録データは一切削除されません。\n')) return;
+      }
+      try {
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', tId), { isArchived: toArchived }, { merge: true });
+        showSuccess(toArchived ? '班を終了状態にしました。（記録は残ります）' : '班を現役に戻しました。');
+      } catch (err) {
+        if (!isTerminatedError(err)) showError('状態の更新に失敗しました：' + (err.message || err));
+      }
+      return;
+    }
+
     if (delBtn && currentUser) {
-      if (!confirm('この班を削除しますか？（この班に紐づく記録自体は削除されません）')) return;
+      if (!confirm('この班を削除しますか？\n\n※この班に紐づく記録データ自体は削除されません（記録は team_id 付きのまま残ります）。')) return;
       try {
         await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', delBtn.dataset.teamId));
         if (editingTeamId === delBtn.dataset.teamId) resetTeamForm();
@@ -1190,6 +1298,7 @@
               return `<div style="flex:0 0 auto; min-width:160px; max-width:220px; padding:8px 12px; border-radius:6px; border:2px solid ${c.border}; background:${c.bg};">
                 <div style="font-size:12px; font-weight:900; color:${c.text}; margin-bottom:4px;">${escapeHtml(t.name)}</div>
                 <div style="font-size:10px; color:#4b5563; line-height:1.5;">${escapeHtml(t.members || '（メンバー未設定）')}</div>
+                ${t.memo ? `<div style="font-size:10px; color:#6b7280; margin-top:2px;">📝 ${escapeHtml(t.memo)}</div>` : ''}
               </div>`;
             }).join('')
           : '<div style="font-size:11px; color:#9ca3af;">班情報が登録されていません。</div>';
@@ -1204,6 +1313,12 @@
           pdfTeamName.style.color = c.text;
           pdfTeamName.textContent = activeTeam.name;
           pdfTeamMembers.textContent = activeTeam.members || '（未設定）';
+          if (activeTeam.memo) {
+            pdfTeamMemoRow.style.display = 'block';
+            pdfTeamMemo.textContent = activeTeam.memo;
+          } else {
+            pdfTeamMemoRow.style.display = 'none';
+          }
         } else {
           pdfTeamHeader.style.display = 'none';
         }
@@ -1312,7 +1427,6 @@
     }
   });
 
-  // Excel(xlsx)出力：業務日報の「活動経過」表と同じ結合構造＋罫線＋「活動終了」行を必ず末尾に追加
   btnExportExcel.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
@@ -1414,7 +1528,7 @@
       version: 3, exported_at: new Date().toISOString(),
       entries: allEntries.map(e => ({ timestamp: toDate(e.timestamp).toISOString(), from: e.from||'', to: e.to||'', content: e.content||'', entry_type: e.entry_type||'normal', team_id: e.team_id||null })),
       templates: templatesFlat,
-      teams: allTeams.map(t => ({ id: t.id, name: t.name, members: t.members||'' }))
+      teams: allTeams.map(t => ({ id: t.id, name: t.name, members: t.members||'', memo: t.memo || '', isArchived: !!t.isArchived }))
     };
     downloadJson(exportData, `chronology_backup_ALL_${nowStamp()}.json`);
     showSuccess('全体バックアップを保存しました。');
@@ -1445,7 +1559,13 @@
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'templates'), { type: tmpl.type, text: tmpl.text, createdAtLocal: Date.now() });
       }
       for (const team of (data.teams||[])) {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id || String(Date.now())), { name: team.name, members: team.members||'', createdAtLocal: Date.now() });
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id || String(Date.now())), {
+          name: team.name,
+          members: team.members || '',
+          memo: team.memo || '',
+          isArchived: !!team.isArchived,
+          createdAtLocal: Date.now()
+        });
       }
       showSuccess(`全体バックアップの復元が完了しました（記録${total}件）。`);
     } catch(err) { if(!isTerminatedError(err)) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); } }
