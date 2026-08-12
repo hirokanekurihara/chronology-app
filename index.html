@@ -15,6 +15,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Excel(xlsx) 出力用ライブラリ（SheetJS） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -259,8 +261,8 @@
         <button id="btn-export-pdf" type="button" class="btn-base flex-1 bg-gray-800 text-white rounded-lg font-bold py-3 shadow active:bg-gray-900 text-sm">
           📑 PDF出力
         </button>
-        <button id="btn-export-csv" type="button" class="btn-base flex-1 bg-emerald-700 text-white rounded-lg font-bold py-3 shadow active:bg-emerald-800 text-sm">
-          📊 CSV出力
+        <button id="btn-export-excel" type="button" class="btn-base flex-1 bg-emerald-700 text-white rounded-lg font-bold py-3 shadow active:bg-emerald-800 text-sm">
+          📗 Excel出力
         </button>
       </div>
     </section>
@@ -483,7 +485,7 @@
   const searchListEmpty = el('search-list-empty');
   const searchCount = el('search-count');
   const btnExportPdf = el('btn-export-pdf');
-  const btnExportCsv = el('btn-export-csv');
+  const btnExportExcel = el('btn-export-excel');
   const workTimeSummaryCard = el('work-time-summary-card');
   const workTimeSummaryContent = el('work-time-summary-content');
 
@@ -1234,7 +1236,6 @@
       const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
       const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
 
-      // ★変更：白紙エラーの原因だったforeignObjectRenderingを削除し、元の安全な描画方式に戻す
       const CANVAS_OPTS = { scale: SCALE, backgroundColor: '#ffffff', useCORS: true };
 
       const headerCanvas = await html2canvas(pdfHeaderSection, CANVAS_OPTS);
@@ -1312,39 +1313,50 @@
     }
   });
 
-  btnExportCsv.addEventListener('click', () => {
+  // Excel(xlsx)出力：業務日報の「活動経過」表と同じセル結合構造で出力する
+  btnExportExcel.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
 
-    function csvCell(val) {
-      const s = String(val == null ? '' : val);
-      return '"' + s.replace(/"/g, '""') + '"';
-    }
-
-    const rows = [['時間', '内容'].map(csvCell).join(',')];
+    // 業務日報の構造：A列=時間（結合なし）／B〜C列=場所（結合）／D〜J列=内容（結合）
+    // この形に合わせて、各行10列分の配列を作成する
+    const aoa = [];
+    aoa.push(['時間', '場所', '', '内容', '', '', '', '', '', '']); // 1行目（見出し）
 
     target.forEach(e => {
       const d = toDate(e.timestamp);
       const timeStr = formatTimePart(d);
-      rows.push([
-        csvCell(timeStr),
-        csvCell(e.content || '')
-      ].join(','));
+      aoa.push([
+        timeStr,          // A列：時間
+        '',                // B列：場所（空欄・手入力想定）
+        '',                // C列（B列と結合）
+        e.content || '',  // D列：内容
+        '', '', '', '', '', '' // E〜J列（D列と結合）
+      ]);
     });
 
-    const bom = '\uFEFF';
-    const csvContent = bom + rows.join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const now = new Date();
-    a.href = url;
-    a.download = `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showSuccess(`CSVファイルを出力しました（${target.length}件）。時間列・内容列をそれぞれ選択してコピペしてご利用ください。`);
+    try {
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // 業務日報と同じセル結合を再現する
+      ws['!merges'] = [];
+      for (let i = 0; i < aoa.length; i++) {
+        ws['!merges'].push({ s: { r: i, c: 1 }, e: { r: i, c: 2 } }); // B〜C列（場所）
+        ws['!merges'].push({ s: { r: i, c: 3 }, e: { r: i, c: 9 } }); // D〜J列（内容）
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '経時記録');
+
+      const now = new Date();
+      const filename = `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      showSuccess(`Excelファイルを出力しました（${target.length}件）。出力されたファイルを開き、行をコピーして業務日報の「活動経過」表に貼り付けてください。`);
+    } catch (err) {
+      console.error(err);
+      showError('Excelファイルの出力に失敗しました：' + (err.message || err));
+    }
   });
 
   function downloadJson(data, filename) {
