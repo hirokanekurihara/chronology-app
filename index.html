@@ -299,10 +299,23 @@
             <button id="btn-cancel-edit-team" type="button" class="btn-base hidden px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold py-2 active:bg-gray-300">キャンセル</button>
           </div>
         </div>
+
+        <!-- 班一覧（稼働中は常時表示／終了した班だけ折りたたみ） -->
         <div class="border-t pt-3 space-y-2">
           <p class="text-xs font-semibold text-gray-500">登録済みの班（✏️で編集／終了にすると上部メニューから基本的に隠れます）</p>
           <input id="team-search" type="text" placeholder="班名・メンバー・活動メモで検索" class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
-          <ul id="list-teams" class="mt-2 space-y-1"></ul>
+
+          <p class="text-[11px] text-gray-400 font-semibold pt-1">🟢 稼働中の班</p>
+          <ul id="list-teams-active" class="space-y-1"></ul>
+
+          <div id="group-archived" class="hidden pt-1">
+            <button id="btn-toggle-archived" type="button"
+              class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 text-xs font-bold active:bg-gray-200">
+              <span>🏁 終了した班 <span id="count-archived" class="font-normal text-gray-500"></span></span>
+              <span id="icon-archived">▼ 開く</span>
+            </button>
+            <ul id="list-teams-archived" class="mt-1 space-y-1 hidden"></ul>
+          </div>
         </div>
       </div>
 
@@ -514,10 +527,36 @@
   const newTeamMembers = el('new-team-members');
   const newTeamMemo = el('new-team-memo');
   const btnAddTeam = el('btn-add-team');
-  const listTeams = el('list-teams');
   const teamFormTitle = el('team-form-title');
   const btnCancelEditTeam = el('btn-cancel-edit-team');
   const teamSearch = el('team-search');
+
+  // 班一覧（稼働中は常時表示、終了した班だけ折りたたみ）
+  const listTeamsActive = el('list-teams-active');
+  const groupArchived = el('group-archived');
+  const btnToggleArchived = el('btn-toggle-archived');
+  const listTeamsArchived = el('list-teams-archived');
+  const countArchived = el('count-archived');
+  const iconArchived = el('icon-archived');
+
+  // 折りたたみの開閉状態はlocalStorageに保存し、Firestoreの更新による再描画後も再適用する
+  let archivedGroupOpen = localStorage.getItem('chronolo_group_archived_open') === '1';
+
+  function applyArchivedGroupState() {
+    if (archivedGroupOpen) {
+      listTeamsArchived.classList.remove('hidden');
+      iconArchived.textContent = '▲ 閉じる';
+    } else {
+      listTeamsArchived.classList.add('hidden');
+      iconArchived.textContent = '▼ 開く';
+    }
+  }
+
+  btnToggleArchived.addEventListener('click', () => {
+    archivedGroupOpen = !archivedGroupOpen;
+    localStorage.setItem('chronolo_group_archived_open', archivedGroupOpen ? '1' : '0');
+    applyArchivedGroupState();
+  });
 
   const newTemplateContent = el('new-template-content');
   const newTemplateFrom = el('new-template-from');
@@ -788,6 +827,32 @@
     return entries.filter(e => e.team_id === activeTeamId);
   }
 
+  function buildTeamCardHtml(t) {
+    const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' };
+    const isActiveHere = t.id === activeTeamId;
+    const statusBadge = t.isArchived
+      ? '<span class="ml-1 inline-block text-[10px] px-1 rounded bg-gray-500 text-white align-middle">終了</span>'
+      : '';
+    const created = t.createdAtLocal ? formatDatePart(new Date(t.createdAtLocal)) : '';
+    return `<li class="flex items-start justify-between rounded-lg px-3 py-2 text-sm ${isActiveHere ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
+      <div class="min-w-0 mr-2">
+        <p class="font-semibold truncate" style="color:${c.text};">
+          ${escapeHtml(t.name)}${statusBadge}${isActiveHere ? ' <span class="text-[10px] font-normal text-blue-700">（この端末で使用中）</span>' : ''}
+        </p>
+        <p class="text-[11px] text-gray-500 truncate">${escapeHtml(t.members||'（メンバー未設定）')}</p>
+        ${t.memo ? `<p class="text-[11px] text-gray-500 mt-0.5 line-clamp-2">📌 ${escapeHtml(t.memo)}</p>` : ''}
+        ${created ? `<p class="text-[10px] text-gray-400 mt-0.5">作成日: ${escapeHtml(created)}</p>` : ''}
+      </div>
+      <div class="flex flex-col items-end gap-1 shrink-0">
+        <button data-team-id="${t.id}" class="btn-edit-team text-blue-500 hover:text-blue-700 text-xs font-bold whitespace-nowrap">✏️ 編集</button>
+        <button data-team-id="${t.id}" class="btn-toggle-archive text-xs ${t.isArchived ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'} font-semibold whitespace-nowrap">
+          ${t.isArchived ? '現役に戻す' : '終了にする'}
+        </button>
+        <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-[11px] font-bold mt-0.5">削除</button>
+      </div>
+    </li>`;
+  }
+
   function renderTeamUI() {
     const showArchived = headerShowArchived.checked;
     const baseOptions = [
@@ -795,16 +860,16 @@
       '<option value="ALL">すべての班を表示（入力不可）</option>'
     ];
 
-    const activeTeams = allTeams.filter(t => !t.isArchived);
-    const archivedTeams = allTeams.filter(t => t.isArchived);
+    const activeTeamsAllHeader = allTeams.filter(t => !t.isArchived);
+    const archivedTeamsAllHeader = allTeams.filter(t => t.isArchived);
 
-    activeTeams.forEach(t => {
+    activeTeamsAllHeader.forEach(t => {
       baseOptions.push(`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`);
     });
 
-    if (showArchived && archivedTeams.length > 0) {
+    if (showArchived && archivedTeamsAllHeader.length > 0) {
       baseOptions.push('<option value="__sep__" disabled>―― 終了した班 ――</option>');
-      archivedTeams.forEach(t => {
+      archivedTeamsAllHeader.forEach(t => {
         baseOptions.push(`<option value="${escapeHtml(t.id)}">[過去] ${escapeHtml(t.name)}</option>`);
       });
     }
@@ -817,40 +882,38 @@
     }
     headerTeamSelect.value = activeTeamId;
 
+    // 設定タブの班一覧（稼働中は常時表示、終了した班だけ折りたたみ＋検索対象）
     const keyword = teamSearch.value.trim().toLowerCase();
-    const filteredTeams = allTeams.filter(t => {
+    const filterTeam = (t) => {
       if (!keyword) return true;
-      const text = `${t.name || ''} ${t.members || ''} ${t.memo || ''}`.toLowerCase();
-      return text.includes(keyword);
-    });
+      return `${t.name||''} ${t.members||''} ${t.memo||''}`.toLowerCase().includes(keyword);
+    };
 
-    listTeams.innerHTML = filteredTeams.length === 0
-      ? '<li class="text-xs text-gray-400">該当する班はありません</li>'
-      : filteredTeams.map((t) => {
-          const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' };
-          const isActiveHere = t.id === activeTeamId;
-          const statusBadge = t.isArchived
-            ? '<span class="ml-1 inline-block text-[10px] px-1 rounded bg-gray-500 text-white align-middle">終了</span>'
-            : '';
-          const created = t.createdAtLocal ? formatDatePart(new Date(t.createdAtLocal)) : '';
-          return `<li class="flex items-start justify-between rounded-lg px-3 py-2 text-sm ${isActiveHere ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
-            <div class="min-w-0 mr-2">
-              <p class="font-semibold truncate" style="color:${c.text};">
-                ${escapeHtml(t.name)}${statusBadge}${isActiveHere ? ' <span class="text-[10px] font-normal text-blue-700">（この端末で使用中）</span>' : ''}
-              </p>
-              <p class="text-[11px] text-gray-500 truncate">${escapeHtml(t.members||'（メンバー未設定）')}</p>
-              ${t.memo ? `<p class="text-[11px] text-gray-500 mt-0.5 line-clamp-2">📌 ${escapeHtml(t.memo)}</p>` : ''}
-              ${created ? `<p class="text-[10px] text-gray-400 mt-0.5">作成日: ${escapeHtml(created)}</p>` : ''}
-            </div>
-            <div class="flex flex-col items-end gap-1 shrink-0">
-              <button data-team-id="${t.id}" class="btn-edit-team text-blue-500 hover:text-blue-700 text-xs font-bold whitespace-nowrap">✏️ 編集</button>
-              <button data-team-id="${t.id}" class="btn-toggle-archive text-xs ${t.isArchived ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'} font-semibold whitespace-nowrap">
-                ${t.isArchived ? '現役に戻す' : '終了にする'}
-              </button>
-              <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-[11px] font-bold mt-0.5">削除</button>
-            </div>
-          </li>`;
-        }).join('');
+    const activeTeams = allTeams.filter(t => !t.isArchived && filterTeam(t));
+    const archivedTeamsAll = allTeams.filter(t => t.isArchived);
+    const archivedTeams = archivedTeamsAll.filter(filterTeam);
+
+    listTeamsActive.innerHTML = activeTeams.length === 0
+      ? '<li class="text-xs text-gray-400 px-1 py-2">該当する班はありません</li>'
+      : activeTeams.map(buildTeamCardHtml).join('');
+
+    if (archivedTeamsAll.length === 0) {
+      groupArchived.classList.add('hidden');
+    } else {
+      groupArchived.classList.remove('hidden');
+      countArchived.textContent = `${archivedTeams.length}件`;
+      listTeamsArchived.innerHTML = archivedTeams.length === 0
+        ? '<li class="text-xs text-gray-400 px-1 py-2">該当する班はありません</li>'
+        : archivedTeams.map(buildTeamCardHtml).join('');
+    }
+
+    // キーワード検索中は、終了した班の折りたたみを無視して強制的に開く
+    if (keyword && archivedTeamsAll.length > 0) {
+      listTeamsArchived.classList.remove('hidden');
+      iconArchived.textContent = '▲ 閉じる';
+    } else {
+      applyArchivedGroupState();
+    }
 
     renderRecordList();
   }
@@ -912,51 +975,54 @@
     } catch(err) { if(!isTerminatedError(err)) showError('班の保存に失敗しました：' + (err.message||err)); }
   });
 
-  listTeams.addEventListener('click', async (e) => {
-    const editBtn = e.target.closest('.btn-edit-team');
-    const toggleBtn = e.target.closest('.btn-toggle-archive');
-    const delBtn = e.target.closest('.btn-delete-team');
+  // 稼働中・終了した班、両方のリストに同じ操作（編集／終了・現役切替／削除）を割り当てる
+  [listTeamsActive, listTeamsArchived].forEach(ul => {
+    ul.addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('.btn-edit-team');
+      const toggleBtn = e.target.closest('.btn-toggle-archive');
+      const delBtn = e.target.closest('.btn-delete-team');
 
-    if (editBtn) {
-      const tId = editBtn.dataset.teamId;
-      const team = allTeams.find(t => t.id === tId);
-      if (team) {
-        editingTeamId = tId;
-        newTeamName.value = team.name;
-        newTeamMembers.value = team.members || '';
-        newTeamMemo.value = team.memo || '';
-        teamFormTitle.textContent = '班の情報を編集';
-        btnAddTeam.textContent = '✓ 更新する';
-        btnCancelEditTeam.classList.remove('hidden');
-        newTeamName.focus();
+      if (editBtn) {
+        const tId = editBtn.dataset.teamId;
+        const team = allTeams.find(t => t.id === tId);
+        if (team) {
+          editingTeamId = tId;
+          newTeamName.value = team.name;
+          newTeamMembers.value = team.members || '';
+          newTeamMemo.value = team.memo || '';
+          teamFormTitle.textContent = '班の情報を編集';
+          btnAddTeam.textContent = '✓ 更新する';
+          btnCancelEditTeam.classList.remove('hidden');
+          newTeamName.focus();
+        }
+        return;
       }
-      return;
-    }
 
-    if (toggleBtn && currentUser) {
-      const tId = toggleBtn.dataset.teamId;
-      const team = allTeams.find(t => t.id === tId);
-      if (!team) return;
-      const toArchived = !team.isArchived;
-      if (toArchived) {
-        if (!confirm('この班を「終了した班」として扱いますか？\n\n・上部メニューからは基本的に非表示になります（チェックを入れれば表示可能）\n・これまでの記録データは一切削除されません。\n')) return;
+      if (toggleBtn && currentUser) {
+        const tId = toggleBtn.dataset.teamId;
+        const team = allTeams.find(t => t.id === tId);
+        if (!team) return;
+        const toArchived = !team.isArchived;
+        if (toArchived) {
+          if (!confirm('この班を「終了した班」として扱いますか？\n\n・上部メニューからは基本的に非表示になります（チェックを入れれば表示可能）\n・これまでの記録データは一切削除されません。\n')) return;
+        }
+        try {
+          await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', tId), { isArchived: toArchived }, { merge: true });
+          showSuccess(toArchived ? '班を終了状態にしました。（記録は残ります）' : '班を現役に戻しました。');
+        } catch (err) {
+          if (!isTerminatedError(err)) showError('状態の更新に失敗しました：' + (err.message || err));
+        }
+        return;
       }
-      try {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', tId), { isArchived: toArchived }, { merge: true });
-        showSuccess(toArchived ? '班を終了状態にしました。（記録は残ります）' : '班を現役に戻しました。');
-      } catch (err) {
-        if (!isTerminatedError(err)) showError('状態の更新に失敗しました：' + (err.message || err));
-      }
-      return;
-    }
 
-    if (delBtn && currentUser) {
-      if (!confirm('この班を削除しますか？\n\n※この班に紐づく記録データ自体は削除されません（記録は team_id 付きのまま残ります）。')) return;
-      try {
-        await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', delBtn.dataset.teamId));
-        if (editingTeamId === delBtn.dataset.teamId) resetTeamForm();
-      } catch(err) { if(!isTerminatedError(err)) showError('班の削除に失敗しました：' + (err.message||err)); }
-    }
+      if (delBtn && currentUser) {
+        if (!confirm('この班を削除しますか？\n\n※この班に紐づく記録データ自体は削除されません（記録は team_id 付きのまま残ります）。')) return;
+        try {
+          await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', delBtn.dataset.teamId));
+          if (editingTeamId === delBtn.dataset.teamId) resetTeamForm();
+        } catch(err) { if(!isTerminatedError(err)) showError('班の削除に失敗しました：' + (err.message||err)); }
+      }
+    });
   });
 
   function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
