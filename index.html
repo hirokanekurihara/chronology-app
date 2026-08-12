@@ -15,8 +15,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- Excel(xlsx) 出力用ライブラリ（SheetJS） -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Excel(xlsx) 出力用ライブラリ（罫線などのスタイルを書き込める拡張版） -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
   html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -1313,37 +1313,84 @@
     }
   });
 
-  // Excel(xlsx)出力：業務日報の「活動経過」表と同じセル結合構造で出力する
+  // Excel(xlsx)出力：業務日報の「活動経過」表と同じ結合構造＋罫線＋「活動終了」行を必ず末尾に追加
   btnExportExcel.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
 
-    // 業務日報の構造：A列=時間（結合なし）／B〜C列=場所（結合）／D〜J列=内容（結合）
-    // この形に合わせて、各行10列分の配列を作成する
-    const aoa = [];
-    aoa.push(['時間', '場所', '', '内容', '', '', '', '', '', '']); // 1行目（見出し）
+    // 罫線（細い黒の実線）のスタイル定義
+    const borderStyle = {
+      top:    { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left:   { style: 'thin', color: { rgb: '000000' } },
+      right:  { style: 'thin', color: { rgb: '000000' } }
+    };
+    // 見出し行のスタイル（太字・中央揃え・折り返し）
+    const headerCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
+    // 時間列のスタイル（中央揃え）
+    const timeCellStyle = { alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
+    // 場所・内容列のスタイル（左揃え・折り返し）
+    const contentCellStyle = { alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: borderStyle };
+    // 「活動終了」行のスタイル（太字・中央揃え）
+    const endRowCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderStyle };
 
+    // A列=時間／B〜C列=場所（結合・空欄）／D〜J列=内容（結合）という構成で二次元配列を作る
+    const aoa = [];
+
+    // 1行目：見出し行
+    aoa.push([
+      { v: '時間', t: 's', s: headerCellStyle },
+      { v: '場所', t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '内容', t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle },
+      { v: '',     t: 's', s: headerCellStyle }
+    ]);
+
+    // データ行（記録の件数だけ繰り返す）
     target.forEach(e => {
       const d = toDate(e.timestamp);
       const timeStr = formatTimePart(d);
       aoa.push([
-        timeStr,          // A列：時間
-        '',                // B列：場所（空欄・手入力想定）
-        '',                // C列（B列と結合）
-        e.content || '',  // D列：内容
-        '', '', '', '', '', '' // E〜J列（D列と結合）
+        { v: timeStr,          t: 's', s: timeCellStyle },    // A：時間
+        { v: '',                t: 's', s: contentCellStyle }, // B：場所（空欄・手入力想定）
+        { v: '',                t: 's', s: contentCellStyle }, // C（B列と結合）
+        { v: e.content || '',  t: 's', s: contentCellStyle }, // D：内容
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle }  // E〜J（D列と結合）
       ]);
     });
+
+    // 最終行：「活動終了」（件数に関係なく必ず一番下に追加）
+    const endRow = [{ v: '活動終了', t: 's', s: endRowCellStyle }];
+    for (let c = 1; c <= 9; c++) endRow.push({ v: '', t: 's', s: endRowCellStyle });
+    aoa.push(endRow);
 
     try {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-      // 業務日報と同じセル結合を再現する
+      // 列幅（業務日報に近い見やすさに調整）
+      ws['!cols'] = [
+        { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 18 },
+        { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }
+      ];
+
+      // セル結合：見出し行・データ行はB〜C（場所）とD〜J（内容）、最終行（活動終了）はA〜Jすべて
+      const lastRowIdx = aoa.length - 1;
       ws['!merges'] = [];
-      for (let i = 0; i < aoa.length; i++) {
-        ws['!merges'].push({ s: { r: i, c: 1 }, e: { r: i, c: 2 } }); // B〜C列（場所）
-        ws['!merges'].push({ s: { r: i, c: 3 }, e: { r: i, c: 9 } }); // D〜J列（内容）
+      for (let r = 0; r < lastRowIdx; r++) {
+        ws['!merges'].push({ s: { r, c: 1 }, e: { r, c: 2 } });
+        ws['!merges'].push({ s: { r, c: 3 }, e: { r, c: 9 } });
       }
+      ws['!merges'].push({ s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 9 } });
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '経時記録');
@@ -1352,7 +1399,7 @@
       const filename = `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
       XLSX.writeFile(wb, filename);
 
-      showSuccess(`Excelファイルを出力しました（${target.length}件）。出力されたファイルを開き、行をコピーして業務日報の「活動経過」表に貼り付けてください。`);
+      showSuccess(`Excelファイルを出力しました（${target.length}件＋活動終了行、枠線付き）。行をコピーして業務日報の「活動経過」表に貼り付けてください。`);
     } catch (err) {
       console.error(err);
       showError('Excelファイルの出力に失敗しました：' + (err.message || err));
