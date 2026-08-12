@@ -6,7 +6,7 @@
 <title>クロノロジー｜災害対応 経時記録</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2563eb">
-<link rel="apple-touch-icon" href="./icons/icon-192.jpg">
+<link rel="apple-touch-icon" href="./icon-192.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="クロノロ">
@@ -15,7 +15,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- Excel(xlsx) 出力用ライブラリ（罫線などのスタイルを書き込める拡張版） -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
   html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; margin: 0; padding: 0; }
@@ -1318,26 +1317,19 @@
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
 
-    // 罫線（細い黒の実線）のスタイル定義
     const borderStyle = {
       top:    { style: 'thin', color: { rgb: '000000' } },
       bottom: { style: 'thin', color: { rgb: '000000' } },
       left:   { style: 'thin', color: { rgb: '000000' } },
       right:  { style: 'thin', color: { rgb: '000000' } }
     };
-    // 見出し行のスタイル（太字・中央揃え・折り返し）
     const headerCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
-    // 時間列のスタイル（中央揃え）
     const timeCellStyle = { alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
-    // 場所・内容列のスタイル（左揃え・折り返し）
     const contentCellStyle = { alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: borderStyle };
-    // 「活動終了」行のスタイル（太字・中央揃え）
     const endRowCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderStyle };
 
-    // A列=時間／B〜C列=場所（結合・空欄）／D〜J列=内容（結合）という構成で二次元配列を作る
     const aoa = [];
 
-    // 1行目：見出し行
     aoa.push([
       { v: '時間', t: 's', s: headerCellStyle },
       { v: '場所', t: 's', s: headerCellStyle },
@@ -1351,25 +1343,23 @@
       { v: '',     t: 's', s: headerCellStyle }
     ]);
 
-    // データ行（記録の件数だけ繰り返す）
     target.forEach(e => {
       const d = toDate(e.timestamp);
       const timeStr = formatTimePart(d);
       aoa.push([
-        { v: timeStr,          t: 's', s: timeCellStyle },    // A：時間
-        { v: '',                t: 's', s: contentCellStyle }, // B：場所（空欄・手入力想定）
-        { v: '',                t: 's', s: contentCellStyle }, // C（B列と結合）
-        { v: e.content || '',  t: 's', s: contentCellStyle }, // D：内容
+        { v: timeStr,          t: 's', s: timeCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: '',                t: 's', s: contentCellStyle },
+        { v: e.content || '',  t: 's', s: contentCellStyle },
         { v: '',                t: 's', s: contentCellStyle },
         { v: '',                t: 's', s: contentCellStyle },
         { v: '',                t: 's', s: contentCellStyle },
         { v: '',                t: 's', s: contentCellStyle },
         { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle }  // E〜J（D列と結合）
+        { v: '',                t: 's', s: contentCellStyle }
       ]);
     });
 
-    // 最終行：「活動終了」（件数に関係なく必ず一番下に追加）
     const endRow = [{ v: '活動終了', t: 's', s: endRowCellStyle }];
     for (let c = 1; c <= 9; c++) endRow.push({ v: '', t: 's', s: endRowCellStyle });
     aoa.push(endRow);
@@ -1377,13 +1367,11 @@
     try {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-      // 列幅（業務日報に近い見やすさに調整）
       ws['!cols'] = [
         { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 18 },
         { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }
       ];
 
-      // セル結合：見出し行・データ行はB〜C（場所）とD〜J（内容）、最終行（活動終了）はA〜Jすべて
       const lastRowIdx = aoa.length - 1;
       ws['!merges'] = [];
       for (let r = 0; r < lastRowIdx; r++) {
