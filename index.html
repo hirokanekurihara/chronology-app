@@ -285,6 +285,19 @@
         </div>
       </div>
 
+      <!-- メンバー管理 -->
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 border-2 border-blue-100">
+        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>メンバー管理</h2>
+        <p class="text-xs text-gray-500">「管理者」チェックはログイン済みの人なら誰でも付け外しできます。メンバーの追加・削除は、管理者チェックが入っている人だけができます。</p>
+        <div class="border-t pt-3 space-y-2">
+          <ul id="list-members" class="space-y-2 mb-3"></ul>
+          <div id="add-member-form" class="flex gap-2 hidden">
+            <input id="new-member-email" type="email" placeholder="追加するGmailアドレス" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="btn-add-member" type="button" class="btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 班の管理 -->
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
@@ -523,6 +536,13 @@
   const userPhoto = el('user-photo');
   const userName = el('user-name');
   const userEmail = el('user-email');
+
+  // メンバー管理用
+  const listMembers = el('list-members');
+  const addMemberForm = el('add-member-form');
+  const newMemberEmail = el('new-member-email');
+  const btnAddMember = el('btn-add-member');
+
   const newTeamName = el('new-team-name');
   const newTeamMembers = el('new-team-members');
   const newTeamMemo = el('new-team-memo');
@@ -539,7 +559,6 @@
   const countArchived = el('count-archived');
   const iconArchived = el('icon-archived');
 
-  // 折りたたみの開閉状態はlocalStorageに保存し、Firestoreの更新による再描画後も再適用する
   let archivedGroupOpen = localStorage.getItem('chronolo_group_archived_open') === '1';
 
   function applyArchivedGroupState() {
@@ -602,10 +621,12 @@
   let editingEntryId = null;
 
   let currentUser = null;
-  let entriesUnsub = null, templatesUnsub = null, teamsUnsub = null;
+  let entriesUnsub = null, templatesUnsub = null, teamsUnsub = null, accessUnsub = null;
   let allEntries = [];
   let allTemplates = { content: [], from: [], to: [] };
   let allTeams = [];
+  let allowedEmails = [];
+  let adminEmails = [];
   let activeTeamId = localStorage.getItem('chronolo_active_team') || '';
   let isNetworkEnabled = true;
   let lastSearchResults = [];
@@ -760,9 +781,9 @@
       initDefaultDatetime();
     } else {
       currentUser = null;
-      [entriesUnsub, templatesUnsub, teamsUnsub].forEach(u => { if(u) u(); });
-      entriesUnsub = templatesUnsub = teamsUnsub = null;
-      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = [];
+      [entriesUnsub, templatesUnsub, teamsUnsub, accessUnsub].forEach(u => { if(u) u(); });
+      entriesUnsub = templatesUnsub = teamsUnsub = accessUnsub = null;
+      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = []; allowedEmails = []; adminEmails = [];
       appRoot.classList.add('hidden'); appRoot.classList.remove('flex');
       signinOverlay.classList.remove('hidden');
     }
@@ -781,6 +802,18 @@
     if (entriesUnsub) entriesUnsub();
     if (templatesUnsub) templatesUnsub();
     if (teamsUnsub) teamsUnsub();
+    if (accessUnsub) accessUnsub();
+
+    accessUnsub = onSnapshot(
+      doc(db, WS_PATH, WS_ID, 'settings', 'access_control'),
+      (snap) => {
+        const data = snap.exists() ? snap.data() : { allowedEmails: [], adminEmails: [] };
+        allowedEmails = data.allowedEmails || [];
+        adminEmails = data.adminEmails || [];
+        renderMembersUI();
+      },
+      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('アクセス権限の取得に失敗しました：', err); }
+    );
 
     entriesUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'entries'), orderBy('timestamp','asc')),
@@ -795,7 +828,7 @@
       },
       (err) => {
         if (isTerminatedError(err)) { handleTerminated(); return; }
-        if (err.code === 'permission-denied') { showError('アクセス権限がありません。Firebaseのセキュリティルールに、あなたのメールアドレスが正しく追加されているか確認してください。'); }
+        if (err.code === 'permission-denied') { showError('アクセス権限がありません。Firebaseのセキュリティルール、またはメンバー管理の許可リストを確認してください。'); }
         else { showError('記録の取得に失敗しました：' + (err.message||err)); }
       }
     );
@@ -820,6 +853,95 @@
       (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('班情報の取得に失敗しました：', err); }
     );
   }
+
+  function renderMembersUI() {
+    if (!currentUser) return;
+    // 自分が管理者かどうか（まだ誰も登録されていない初期状態は特例として操作可能にする）
+    const isEffectivelyAdmin = adminEmails.includes(currentUser.email) || allowedEmails.length === 0;
+
+    addMemberForm.classList.toggle('hidden', !isEffectivelyAdmin);
+
+    if (allowedEmails.length === 0) {
+      listMembers.innerHTML = '<li class="text-xs text-gray-400 px-2 py-1">メンバーが登録されていません（現在は固定管理者のみ有効です）。下のフォームからあなた自身のメールアドレスを追加してください。</li>';
+      return;
+    }
+
+    listMembers.innerHTML = allowedEmails.map(email => {
+      const isAdmin = adminEmails.includes(email);
+      const isMe = email === currentUser.email;
+      // 削除ボタンは「自分が管理者」かつ「対象が自分以外」の時だけ表示（自分自身の誤削除防止）
+      const delBtn = (isEffectivelyAdmin && !isMe)
+        ? `<button data-email="${email}" class="btn-delete-member text-red-500 text-xs font-bold px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded">削除</button>`
+        : `<span class="w-8"></span>`;
+
+      return `<li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm border border-gray-200 shadow-sm">
+        <span class="truncate flex-1 mr-2">${escapeHtml(email)}</span>
+        <div class="flex items-center gap-3 shrink-0">
+          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+            <input type="checkbox" data-email="${email}" class="cb-admin-toggle rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isAdmin ? 'checked' : ''}>
+            管理者
+          </label>
+          ${delBtn}
+        </div>
+      </li>`;
+    }).join('');
+  }
+
+  btnAddMember.addEventListener('click', async () => {
+    const email = newMemberEmail.value.trim().toLowerCase();
+    if (!email) { showError('追加するメールアドレスを入力してください。'); return; }
+    if (allowedEmails.includes(email)) { showError('そのメールアドレスは既に登録されています。'); return; }
+
+    const newAllowed = [...allowedEmails, email];
+    const newAdmins = [...adminEmails];
+    // 最初の1人目を追加した場合は、自動的に管理者にする（初回移行のブートストラップ用）
+    if (newAllowed.length === 1) newAdmins.push(email);
+
+    try {
+      await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), {
+        allowedEmails: newAllowed,
+        adminEmails: newAdmins
+      }, { merge: true });
+      newMemberEmail.value = '';
+      showSuccess(email + ' を追加しました。');
+    } catch (err) {
+      if (!isTerminatedError(err)) showError('メンバーの追加に失敗しました：' + (err.message || err));
+    }
+  });
+
+  listMembers.addEventListener('click', async (e) => {
+    const delBtn = e.target.closest('.btn-delete-member');
+    const cbAdmin = e.target.closest('.cb-admin-toggle');
+
+    if (delBtn) {
+      const email = delBtn.dataset.email;
+      if (!confirm(`${email} を削除しますか？\nこのユーザーはアプリにログインできなくなります。`)) return;
+      const newAllowed = allowedEmails.filter(x => x !== email);
+      const newAdmins = adminEmails.filter(x => x !== email);
+      try {
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), { allowedEmails: newAllowed, adminEmails: newAdmins }, { merge: true });
+        showSuccess(email + ' を削除しました。');
+      } catch (err) {
+        if (!isTerminatedError(err)) showError('メンバーの削除に失敗しました：' + (err.message || err));
+      }
+    }
+
+    if (cbAdmin) {
+      const email = cbAdmin.dataset.email;
+      const isChecked = cbAdmin.checked;
+      let newAdmins = [...adminEmails];
+
+      if (isChecked && !newAdmins.includes(email)) newAdmins.push(email);
+      else if (!isChecked) newAdmins = newAdmins.filter(x => x !== email);
+
+      try {
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), { adminEmails: newAdmins }, { merge: true });
+      } catch (err) {
+        cbAdmin.checked = !isChecked; // エラー時はチェック状態を元に戻す
+        if (!isTerminatedError(err)) showError('権限の変更に失敗しました：' + (err.message || err));
+      }
+    }
+  });
 
   function getFilteredEntries(entries) {
     if (!activeTeamId) return [];
@@ -882,7 +1004,6 @@
     }
     headerTeamSelect.value = activeTeamId;
 
-    // 設定タブの班一覧（稼働中は常時表示、終了した班だけ折りたたみ＋検索対象）
     const keyword = teamSearch.value.trim().toLowerCase();
     const filterTeam = (t) => {
       if (!keyword) return true;
@@ -907,7 +1028,6 @@
         : archivedTeams.map(buildTeamCardHtml).join('');
     }
 
-    // キーワード検索中は、終了した班の折りたたみを無視して強制的に開く
     if (keyword && archivedTeamsAll.length > 0) {
       listTeamsArchived.classList.remove('hidden');
       iconArchived.textContent = '▲ 閉じる';
@@ -975,7 +1095,6 @@
     } catch(err) { if(!isTerminatedError(err)) showError('班の保存に失敗しました：' + (err.message||err)); }
   });
 
-  // 稼働中・終了した班、両方のリストに同じ操作（編集／終了・現役切替／削除）を割り当てる
   [listTeamsActive, listTeamsArchived].forEach(ul => {
     ul.addEventListener('click', async (e) => {
       const editBtn = e.target.closest('.btn-edit-team');
