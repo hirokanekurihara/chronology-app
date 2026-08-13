@@ -16,6 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
   html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -29,6 +30,9 @@
   input:checked + .toggle-track .toggle-knob { transform: translateX(20px); }
   input:checked + .toggle-track { background-color: #2563eb; }
   #pdf-render-root { position: absolute; left: -9999px; top: 0; width: 720px; background: #ffffff; font-family: 'Noto Sans JP', sans-serif; color: #1f2937; }
+  .drag-handle { cursor: grab; padding: 8px; color: #9ca3af; font-size: 18px; line-height: 1; }
+  .drag-handle:active { cursor: grabbing; }
+  .sortable-ghost { opacity: 0.4; }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 flex flex-col h-full">
@@ -276,6 +280,7 @@
 
     <!-- 設定タブ -->
     <section id="panel-settings" class="tab-panel hidden-panel p-3 space-y-4">
+      <!-- ユーザー情報（並び替え対象外・固定） -->
       <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3">
         <img id="user-photo" src="" alt="" class="w-10 h-10 rounded-full bg-gray-200 hidden">
         <div class="min-w-0">
@@ -285,103 +290,131 @@
         </div>
       </div>
 
-      <!-- メンバー管理 -->
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 border-2 border-blue-100">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>メンバー管理</h2>
-        <p class="text-xs text-gray-500">「管理者」チェックはログイン済みの人なら誰でも付け外しできます。メンバーの追加・削除は、管理者チェックが入っている人だけができます。</p>
-        <div class="border-t pt-3 space-y-2">
-          <ul id="list-members" class="space-y-2 mb-3"></ul>
-          <div id="add-member-form" class="flex gap-2 hidden">
-            <input id="new-member-email" type="email" placeholder="追加するGmailアドレス" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button id="btn-add-member" type="button" class="btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
-          </div>
-        </div>
-      </div>
+      <!-- 並び替え可能エリア -->
+      <div id="settings-sortable-list" class="space-y-4">
 
-      <!-- 班の管理 -->
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
-        <p class="text-xs text-gray-500">※表示・入力する班の切り替えは、画面一番上のメニューで行ってください。</p>
-        <div class="border-t pt-3 space-y-2">
-          <p id="team-form-title" class="text-xs font-semibold text-gray-500">新しい班を追加</p>
-          <input id="new-team-name" type="text" placeholder="班の名前（例：第1救護班A）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <input id="new-team-members" type="text" placeholder="メンバー（例：山田太郎、鈴木花子）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <textarea id="new-team-memo" rows="2" placeholder="活動メモ（例：2024/1/5 能登半島地震 第3次支援隊、DMAT出動など）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <!-- このアプリを共有 -->
+        <div data-setting-id="share" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔗</span>このアプリを共有</h2>
+          <p class="text-xs text-gray-500">アプリのURLを他の人に送ることができます。</p>
+          <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+            <input id="share-url-input" type="text" readonly class="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" value="https://hirokanekurihara.github.io/chronology-app/">
+            <button id="btn-share-copy" type="button" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold text-gray-700 whitespace-nowrap">📋 コピー</button>
+          </div>
           <div class="flex gap-2">
-            <button id="btn-add-team" type="button" class="btn-base flex-1 bg-blue-600 text-white rounded-lg font-semibold py-2 active:bg-blue-700">＋ 班を追加</button>
-            <button id="btn-cancel-edit-team" type="button" class="btn-base hidden px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold py-2 active:bg-gray-300">キャンセル</button>
+            <button id="btn-share-mail" type="button" class="flex-1 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold active:bg-blue-100">✉️ メール</button>
+            <button id="btn-share-line" type="button" class="flex-1 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-semibold active:bg-green-100">💬 LINE</button>
+            <button id="btn-share-native" type="button" class="flex-1 py-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-semibold active:bg-gray-200 hidden">📤 その他</button>
           </div>
         </div>
 
-        <!-- 班一覧（稼働中は常時表示／終了した班だけ折りたたみ） -->
-        <div class="border-t pt-3 space-y-2">
-          <p class="text-xs font-semibold text-gray-500">登録済みの班（✏️で編集／終了にすると上部メニューから基本的に隠れます）</p>
-          <input id="team-search" type="text" placeholder="班名・メンバー・活動メモで検索" class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
-
-          <p class="text-[11px] text-gray-400 font-semibold pt-1">🟢 稼働中の班</p>
-          <ul id="list-teams-active" class="space-y-1"></ul>
-
-          <div id="group-archived" class="hidden pt-1">
-            <button id="btn-toggle-archived" type="button"
-              class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 text-xs font-bold active:bg-gray-200">
-              <span>🏁 終了した班 <span id="count-archived" class="font-normal text-gray-500"></span></span>
-              <span id="icon-archived">▼ 開く</span>
-            </button>
-            <ul id="list-teams-archived" class="mt-1 space-y-1 hidden"></ul>
+        <!-- メンバー管理 -->
+        <div data-setting-id="members" class="bg-white rounded-xl shadow-sm p-4 space-y-3 border-2 border-blue-100 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>メンバー管理</h2>
+          <p class="text-xs text-gray-500">「管理者」チェックはログイン済みの人なら誰でも付け外しできます。メンバーの追加・削除は、管理者チェックが入っている人だけができます。</p>
+          <div class="border-t pt-3 space-y-2">
+            <ul id="list-members" class="space-y-2 mb-3"></ul>
+            <div id="add-member-form" class="flex gap-2 hidden">
+              <input id="new-member-email" type="email" placeholder="追加するGmailアドレス" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button id="btn-add-member" type="button" class="btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 定型文 -->
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-4">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
-        <div>
-          <p class="text-xs font-semibold text-gray-500 mb-1">発（From）の定型文</p>
-          <div class="flex gap-2">
-            <input id="new-template-from" type="text" placeholder="新しい定型文（発）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button data-type="from" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+        <!-- 班の管理 -->
+        <div data-setting-id="teams" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
+          <p class="text-xs text-gray-500">※表示・入力する班の切り替えは、画面一番上のメニューで行ってください。</p>
+          <div class="border-t pt-3 space-y-2">
+            <p id="team-form-title" class="text-xs font-semibold text-gray-500">新しい班を追加</p>
+            <input id="new-team-name" type="text" placeholder="班の名前（例：第1救護班A）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input id="new-team-members" type="text" placeholder="メンバー（例：山田太郎、鈴木花子）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <textarea id="new-team-memo" rows="2" placeholder="活動メモ（例：2024/1/5 能登半島地震 第3次支援隊、DMAT出動など）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            <div class="flex gap-2">
+              <button id="btn-add-team" type="button" class="btn-base flex-1 bg-blue-600 text-white rounded-lg font-semibold py-2 active:bg-blue-700">＋ 班を追加</button>
+              <button id="btn-cancel-edit-team" type="button" class="btn-base hidden px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold py-2 active:bg-gray-300">キャンセル</button>
+            </div>
           </div>
-          <ul id="list-template-from" class="mt-2 space-y-1"></ul>
-        </div>
-        <div>
-          <p class="text-xs font-semibold text-gray-500 mb-1">受（To）の定型文</p>
-          <div class="flex gap-2">
-            <input id="new-template-to" type="text" placeholder="新しい定型文（受）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button data-type="to" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+
+          <!-- 班一覧（稼働中は常時表示／終了した班だけ折りたたみ） -->
+          <div class="border-t pt-3 space-y-2">
+            <p class="text-xs font-semibold text-gray-500">登録済みの班（✏️で編集／終了にすると上部メニューから基本的に隠れます）</p>
+            <input id="team-search" type="text" placeholder="班名・メンバー・活動メモで検索" class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+
+            <p class="text-[11px] text-gray-400 font-semibold pt-1">🟢 稼働中の班</p>
+            <ul id="list-teams-active" class="space-y-1"></ul>
+
+            <div id="group-archived" class="hidden pt-1">
+              <button id="btn-toggle-archived" type="button"
+                class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 text-xs font-bold active:bg-gray-200">
+                <span>🏁 終了した班 <span id="count-archived" class="font-normal text-gray-500"></span></span>
+                <span id="icon-archived">▼ 開く</span>
+              </button>
+              <ul id="list-teams-archived" class="mt-1 space-y-1 hidden"></ul>
+            </div>
           </div>
-          <ul id="list-template-to" class="mt-2 space-y-1"></ul>
         </div>
-        <div>
-          <p class="text-xs font-semibold text-gray-500 mb-1">内容の定型文</p>
-          <div class="flex gap-2">
-            <input id="new-template-content" type="text" placeholder="新しい定型文（内容）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button data-type="content" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+
+        <!-- 定型文 -->
+        <div data-setting-id="templates" class="bg-white rounded-xl shadow-sm p-4 space-y-4 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 mb-1">発（From）の定型文</p>
+            <div class="flex gap-2">
+              <input id="new-template-from" type="text" placeholder="新しい定型文（発）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button data-type="from" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+            </div>
+            <ul id="list-template-from" class="mt-2 space-y-1"></ul>
           </div>
-          <ul id="list-template-content" class="mt-2 space-y-1"></ul>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 mb-1">受（To）の定型文</p>
+            <div class="flex gap-2">
+              <input id="new-template-to" type="text" placeholder="新しい定型文（受）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button data-type="to" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+            </div>
+            <ul id="list-template-to" class="mt-2 space-y-1"></ul>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 mb-1">内容の定型文</p>
+            <div class="flex gap-2">
+              <input id="new-template-content" type="text" placeholder="新しい定型文（内容）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button data-type="content" class="btn-template-add btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+            </div>
+            <ul id="list-template-content" class="mt-2 space-y-1"></ul>
+          </div>
         </div>
-      </div>
 
-      <!-- クロノロ入れ替え -->
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
-        <p class="text-xs text-gray-500">※画面一番上で選択している班のクロノロだけが対象になります。</p>
-        <button id="btn-backup-entries" type="button" class="btn-base w-full bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold py-2.5 active:bg-blue-100">⬇️ クロノロだけ保存（JSON）</button>
-        <button id="btn-restore-entries-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ クロノロだけ復元</button>
-        <input id="input-restore-entries-file" type="file" accept=".json" class="hidden">
-        <button id="btn-delete-all" type="button" class="btn-base w-full bg-orange-50 text-orange-700 border border-orange-200 rounded-lg font-semibold py-2.5 active:bg-orange-100">🗑 クロノロだけを削除する（定型文・班は残ります）</button>
-      </div>
+        <!-- クロノロ入れ替え -->
+        <div data-setting-id="entries-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
+          <p class="text-xs text-gray-500">※画面一番上で選択している班のクロノロだけが対象になります。</p>
+          <button id="btn-backup-entries" type="button" class="btn-base w-full bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold py-2.5 active:bg-blue-100">⬇️ クロノロだけ保存（JSON）</button>
+          <button id="btn-restore-entries-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ クロノロだけ復元</button>
+          <input id="input-restore-entries-file" type="file" accept=".json" class="hidden">
+          <button id="btn-delete-all" type="button" class="btn-base w-full bg-orange-50 text-orange-700 border border-orange-200 rounded-lg font-semibold py-2.5 active:bg-orange-100">🗑 クロノロだけを削除する（定型文・班は残ります）</button>
+        </div>
 
-      <!-- 全体バックアップ -->
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
-        <p class="text-xs text-gray-500">記録・定型文・班情報をすべてまとめて保存・復元します。</p>
-        <button id="btn-backup" type="button" class="btn-base w-full bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold py-2.5 active:bg-indigo-100">⬇️ 全体バックアップを保存</button>
-        <button id="btn-restore-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ 全体バックアップから復元（すべて上書き）</button>
-        <input id="input-restore-file" type="file" accept=".json" class="hidden">
-      </div>
+        <!-- 全体バックアップ -->
+        <div data-setting-id="full-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
+          <p class="text-xs text-gray-500">記録・定型文・班情報をすべてまとめて保存・復元します。</p>
+          <button id="btn-backup" type="button" class="btn-base w-full bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold py-2.5 active:bg-indigo-100">⬇️ 全体バックアップを保存</button>
+          <button id="btn-restore-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ 全体バックアップから復元（すべて上書き）</button>
+          <input id="input-restore-file" type="file" accept=".json" class="hidden">
+        </div>
 
-      <div class="bg-white rounded-xl shadow-sm p-4">
-        <button id="btn-signout" type="button" class="btn-base w-full bg-gray-800 text-white rounded-lg font-semibold py-2.5 active:bg-gray-900">ログアウト</button>
+        <!-- ログアウト -->
+        <div data-setting-id="signout" class="bg-white rounded-xl shadow-sm p-4 relative">
+          <div class="absolute top-2 right-2 drag-handle">☰</div>
+          <button id="btn-signout" type="button" class="btn-base w-full bg-gray-800 text-white rounded-lg font-semibold py-2.5 active:bg-gray-900 mt-2">ログアウト</button>
+        </div>
+
       </div>
     </section>
   </main>
@@ -536,6 +569,76 @@
   const userPhoto = el('user-photo');
   const userName = el('user-name');
   const userEmail = el('user-email');
+
+  // URL共有用
+  const shareUrlInput = el('share-url-input');
+  const btnShareCopy = el('btn-share-copy');
+  const btnShareMail = el('btn-share-mail');
+  const btnShareLine = el('btn-share-line');
+  const btnShareNative = el('btn-share-native');
+  const APP_URL = 'https://hirokanekurihara.github.io/chronology-app/';
+
+  if (navigator.share) {
+    btnShareNative.classList.remove('hidden');
+  }
+
+  btnShareCopy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(APP_URL);
+      showSuccess('URLをクリップボードにコピーしました');
+    } catch (e) {
+      shareUrlInput.select();
+      document.execCommand('copy');
+      showSuccess('URLをクリップボードにコピーしました');
+    }
+  });
+
+  btnShareMail.addEventListener('click', () => {
+    const subject = encodeURIComponent('経時記録アプリ（クロノロジー）の共有');
+    const body = encodeURIComponent(`以下のURLからアプリにアクセスできます。\n\n${APP_URL}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  });
+
+  btnShareLine.addEventListener('click', () => {
+    const text = encodeURIComponent(`経時記録アプリ（クロノロジー）\n${APP_URL}`);
+    window.open(`https://line.me/R/msg/text/?${text}`, '_blank');
+  });
+
+  btnShareNative.addEventListener('click', async () => {
+    try {
+      await navigator.share({
+        title: '経時記録アプリ（クロノロジー）',
+        url: APP_URL
+      });
+    } catch (e) {
+      console.log('Share failed or cancelled', e);
+    }
+  });
+
+  // 設定タブの並び替え初期化
+  const settingsSortableList = el('settings-sortable-list');
+  const savedOrder = localStorage.getItem('chronolo_settings_order');
+  
+  if (savedOrder) {
+    try {
+      const orderArray = JSON.parse(savedOrder);
+      const items = Array.from(settingsSortableList.children);
+      orderArray.forEach(id => {
+        const item = items.find(el => el.dataset.settingId === id);
+        if (item) settingsSortableList.appendChild(item);
+      });
+    } catch(e) { console.warn('Failed to parse settings order', e); }
+  }
+
+  Sortable.create(settingsSortableList, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd: () => {
+      const currentOrder = Array.from(settingsSortableList.children).map(el => el.dataset.settingId);
+      localStorage.setItem('chronolo_settings_order', JSON.stringify(currentOrder));
+    }
+  });
 
   // メンバー管理用
   const listMembers = el('list-members');
