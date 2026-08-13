@@ -30,9 +30,10 @@
   input:checked + .toggle-track .toggle-knob { transform: translateX(20px); }
   input:checked + .toggle-track { background-color: #2563eb; }
   #pdf-render-root { position: absolute; left: -9999px; top: 0; width: 720px; background: #ffffff; font-family: 'Noto Sans JP', sans-serif; color: #1f2937; }
-  .drag-handle { cursor: grab; padding: 8px; color: #9ca3af; font-size: 18px; line-height: 1; }
-  .drag-handle:active { cursor: grabbing; }
-  .sortable-ghost { opacity: 0.4; }
+  .drag-handle { cursor: grab; touch-action: none; color: #9ca3af; font-size: 20px; line-height: 1; padding: 4px 6px; }
+  .drag-handle:active { cursor: grabbing; color: #6b7280; }
+  .sortable-ghost { opacity: 0.35; background: #dbeafe !important; border-radius: 12px; }
+  .sortable-chosen { box-shadow: 0 4px 16px 0 rgba(37,99,235,0.18); }
 </style>
 </head>
 <body class="bg-gray-100 text-gray-800 flex flex-col h-full">
@@ -44,20 +45,16 @@
     </div>
     <h1 class="text-xl font-bold mb-1">クロノロジー</h1>
     <p class="text-sm text-gray-500 mb-6">災害対応の経時記録アプリ<br>ご利用にはGoogleアカウントでのサインインが必要です。</p>
-
     <button id="btn-google-signin" type="button"
       class="btn-base w-full flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-3 font-medium shadow-sm hover:bg-gray-50 active:bg-gray-100 mb-3">
       <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.5 3 24 3 16 3 9 7.6 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14-5l-6.6-5.6c-2 1.4-4.6 2.2-7.4 2.2-5.4 0-9.9-3.3-11.3-8H6.4C9 39.5 15.9 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.4 5.5-6.3 6.9l6.6 5.6C39.4 37.2 45 32.1 45 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
       Googleでサインイン
     </button>
-
     <button id="btn-google-signin-popup" type="button"
       class="btn-base w-full flex items-center justify-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium shadow-sm hover:bg-gray-100 active:bg-gray-200">
       予備：ポップアップでサインイン（最終手段）
     </button>
-
     <p id="signin-error" class="mt-4 text-sm text-red-600 hidden"></p>
-
     <button id="btn-reset-cache" type="button" class="mt-6 text-xs text-gray-400 underline p-2">
       画面が進まない場合はこちら（キャッシュをリセット）
     </button>
@@ -280,7 +277,8 @@
 
     <!-- 設定タブ -->
     <section id="panel-settings" class="tab-panel hidden-panel p-3 space-y-4">
-      <!-- ユーザー情報（並び替え対象外・固定） -->
+
+      <!-- ユーザー情報（並び替え対象外・常に先頭固定） -->
       <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3">
         <img id="user-photo" src="" alt="" class="w-10 h-10 rounded-full bg-gray-200 hidden">
         <div class="min-w-0">
@@ -290,43 +288,52 @@
         </div>
       </div>
 
-      <!-- 並び替え可能エリア -->
+      <!-- 並び替え可能なカード群 -->
       <div id="settings-sortable-list" class="space-y-4">
 
-        <!-- このアプリを共有 -->
-        <div data-setting-id="share" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔗</span>このアプリを共有</h2>
-          <p class="text-xs text-gray-500">アプリのURLを他の人に送ることができます。</p>
-          <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-            <input id="share-url-input" type="text" readonly class="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" value="https://hirokanekurihara.github.io/chronology-app/">
-            <button id="btn-share-copy" type="button" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold text-gray-700 whitespace-nowrap">📋 コピー</button>
+        <!-- URL共有 -->
+        <div data-setting-id="share" class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔗</span>このアプリを共有</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
           </div>
-          <div class="flex gap-2">
-            <button id="btn-share-mail" type="button" class="flex-1 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold active:bg-blue-100">✉️ メール</button>
-            <button id="btn-share-line" type="button" class="flex-1 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-semibold active:bg-green-100">💬 LINE</button>
-            <button id="btn-share-native" type="button" class="flex-1 py-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-semibold active:bg-gray-200 hidden">📤 その他</button>
+          <p class="text-xs text-gray-500">アプリのURLをコピーしたり、メール・LINEで送ることができます。</p>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2">
+            <span class="text-xs text-gray-500 truncate flex-1 select-all" id="share-url-display">https://hirokanekurihara.github.io/chronology-app/</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-share-copy" type="button" class="btn-base bg-gray-100 text-gray-700 border border-gray-200 rounded-lg font-semibold text-sm py-2 active:bg-gray-200">📋 コピー</button>
+            <button id="btn-share-mail" type="button" class="btn-base bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold text-sm py-2 active:bg-blue-100">✉️ メール</button>
+            <button id="btn-share-line" type="button" class="btn-base bg-green-50 text-green-700 border border-green-200 rounded-lg font-semibold text-sm py-2 active:bg-green-100">💬 LINE</button>
+            <button id="btn-share-native" type="button" class="btn-base bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-semibold text-sm py-2 active:bg-purple-100 hidden">📤 その他の方法</button>
           </div>
         </div>
 
         <!-- メンバー管理 -->
-        <div data-setting-id="members" class="bg-white rounded-xl shadow-sm p-4 space-y-3 border-2 border-blue-100 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>メンバー管理</h2>
-          <p class="text-xs text-gray-500">「管理者」チェックはログイン済みの人なら誰でも付け外しできます。メンバーの追加・削除は、管理者チェックが入っている人だけができます。</p>
+        <div data-setting-id="members" class="bg-white rounded-xl shadow-sm p-4 space-y-3 border-2 border-blue-100">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>メンバー管理</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
+          <p class="text-xs text-gray-500">「管理者」チェックはログイン済みの人なら誰でも付け外しできます。メンバーの追加・削除・名前の登録は、管理者チェックが入っている人だけができます。</p>
           <div class="border-t pt-3 space-y-2">
             <ul id="list-members" class="space-y-2 mb-3"></ul>
-            <div id="add-member-form" class="flex gap-2 hidden">
-              <input id="new-member-email" type="email" placeholder="追加するGmailアドレス" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <button id="btn-add-member" type="button" class="btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold">追加</button>
+            <div id="add-member-form" class="hidden flex flex-col gap-2">
+              <input id="new-member-email" type="email" placeholder="追加するGmailアドレス（必須）" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div class="flex gap-2">
+                <input id="new-member-name" type="text" placeholder="名前やメモ（任意）" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="btn-add-member" type="button" class="btn-base px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold whitespace-nowrap shrink-0">追加</button>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 班の管理 -->
-        <div data-setting-id="teams" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
+        <div data-setting-id="teams" class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>👥</span>班の作成・編集・削除</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
           <p class="text-xs text-gray-500">※表示・入力する班の切り替えは、画面一番上のメニューで行ってください。</p>
           <div class="border-t pt-3 space-y-2">
             <p id="team-form-title" class="text-xs font-semibold text-gray-500">新しい班を追加</p>
@@ -338,15 +345,11 @@
               <button id="btn-cancel-edit-team" type="button" class="btn-base hidden px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold py-2 active:bg-gray-300">キャンセル</button>
             </div>
           </div>
-
-          <!-- 班一覧（稼働中は常時表示／終了した班だけ折りたたみ） -->
           <div class="border-t pt-3 space-y-2">
             <p class="text-xs font-semibold text-gray-500">登録済みの班（✏️で編集／終了にすると上部メニューから基本的に隠れます）</p>
             <input id="team-search" type="text" placeholder="班名・メンバー・活動メモで検索" class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
-
             <p class="text-[11px] text-gray-400 font-semibold pt-1">🟢 稼働中の班</p>
             <ul id="list-teams-active" class="space-y-1"></ul>
-
             <div id="group-archived" class="hidden pt-1">
               <button id="btn-toggle-archived" type="button"
                 class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 text-xs font-bold active:bg-gray-200">
@@ -359,9 +362,11 @@
         </div>
 
         <!-- 定型文 -->
-        <div data-setting-id="templates" class="bg-white rounded-xl shadow-sm p-4 space-y-4 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
+        <div data-setting-id="templates" class="bg-white rounded-xl shadow-sm p-4 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🗂</span>定型文の管理</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
           <div>
             <p class="text-xs font-semibold text-gray-500 mb-1">発（From）の定型文</p>
             <div class="flex gap-2">
@@ -389,9 +394,11 @@
         </div>
 
         <!-- クロノロ入れ替え -->
-        <div data-setting-id="entries-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
+        <div data-setting-id="entries-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🔄</span>クロノロの入れ替え（活動が変わるとき）</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
           <p class="text-xs text-gray-500">※画面一番上で選択している班のクロノロだけが対象になります。</p>
           <button id="btn-backup-entries" type="button" class="btn-base w-full bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold py-2.5 active:bg-blue-100">⬇️ クロノロだけ保存（JSON）</button>
           <button id="btn-restore-entries-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ クロノロだけ復元</button>
@@ -400,9 +407,11 @@
         </div>
 
         <!-- 全体バックアップ -->
-        <div data-setting-id="full-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
+        <div data-setting-id="full-backup" class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-700 flex items-center gap-1"><span>🛟</span>全体バックアップ（緊急時の保険）</h2>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
           <p class="text-xs text-gray-500">記録・定型文・班情報をすべてまとめて保存・復元します。</p>
           <button id="btn-backup" type="button" class="btn-base w-full bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold py-2.5 active:bg-indigo-100">⬇️ 全体バックアップを保存</button>
           <button id="btn-restore-trigger" type="button" class="btn-base w-full bg-gray-100 text-gray-700 rounded-lg font-semibold py-2.5 active:bg-gray-200">⬆️ 全体バックアップから復元（すべて上書き）</button>
@@ -410,12 +419,15 @@
         </div>
 
         <!-- ログアウト -->
-        <div data-setting-id="signout" class="bg-white rounded-xl shadow-sm p-4 relative">
-          <div class="absolute top-2 right-2 drag-handle">☰</div>
-          <button id="btn-signout" type="button" class="btn-base w-full bg-gray-800 text-white rounded-lg font-semibold py-2.5 active:bg-gray-900 mt-2">ログアウト</button>
+        <div data-setting-id="signout" class="bg-white rounded-xl shadow-sm p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-gray-400">操作が終わったらログアウトしてください</span>
+            <span class="drag-handle select-none" title="ドラッグして並び替え">☰</span>
+          </div>
+          <button id="btn-signout" type="button" class="btn-base w-full bg-gray-800 text-white rounded-lg font-semibold py-2.5 active:bg-gray-900">ログアウト</button>
         </div>
 
-      </div>
+      </div><!-- /settings-sortable-list -->
     </section>
   </main>
 
@@ -429,14 +441,12 @@
 <div id="pdf-render-root">
   <div id="pdf-header-section" style="padding:20px 20px 10px 20px;">
     <div style="font-size:22px; font-weight:900; margin:0 0 6px 0;">経時記録</div>
-
     <div id="pdf-all-teams-section" style="display:none; margin-bottom:12px;">
       <div style="font-size:12px; font-weight:bold; color:#374151; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #e5e7eb;">
         ■ 参加班・メンバー一覧
       </div>
       <div id="pdf-all-teams-cards" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
     </div>
-
     <div id="pdf-team-header" style="display:none; margin-bottom:8px;">
       <div id="pdf-team-header-inner" style="padding:10px 14px; border-radius:6px; border-left:5px solid #2563eb; background:#eff6ff;">
         <div id="pdf-team-name" style="font-size:14px; font-weight:900; color:#1e40af; margin:0 0 4px 0;"></div>
@@ -448,21 +458,16 @@
         </div>
       </div>
     </div>
-
     <div id="pdf-export-date" style="font-size:11px; color:#6b7280; margin-top:4px;"></div>
   </div>
   <div id="pdf-worktime-section" style="display:none; margin:0 20px 14px 20px; padding:10px 14px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:4px;">
     <div style="font-size:13px; font-weight:bold; margin:0 0 6px 0;">勤務時間集計</div>
     <div id="pdf-work-time-content" style="font-size:11px; line-height:1.7;"></div>
   </div>
-
   <div id="pdf-table-header-section" style="padding:0 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
       <colgroup>
-        <col style="width:16%">
-        <col style="width:19%">
-        <col style="width:19%">
-        <col style="width:46%">
+        <col style="width:16%"><col style="width:19%"><col style="width:19%"><col style="width:46%">
       </colgroup>
       <thead>
         <tr style="background:#e5e7eb;">
@@ -477,10 +482,7 @@
   <div id="pdf-table-body-section" style="padding:0 20px 20px 20px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
       <colgroup>
-        <col style="width:16%">
-        <col style="width:19%">
-        <col style="width:19%">
-        <col style="width:46%">
+        <col style="width:16%"><col style="width:19%"><col style="width:19%"><col style="width:46%">
       </colgroup>
       <tbody id="pdf-export-body"></tbody>
     </table>
@@ -514,6 +516,7 @@
   const googleProvider = new GoogleAuthProvider();
   const WS_PATH = 'workspaces';
   const WS_ID = 'shared';
+  const APP_URL = 'https://hirokanekurihara.github.io/chronology-app/';
 
   const el = (id) => document.getElementById(id);
 
@@ -570,80 +573,10 @@
   const userName = el('user-name');
   const userEmail = el('user-email');
 
-  // URL共有用
-  const shareUrlInput = el('share-url-input');
-  const btnShareCopy = el('btn-share-copy');
-  const btnShareMail = el('btn-share-mail');
-  const btnShareLine = el('btn-share-line');
-  const btnShareNative = el('btn-share-native');
-  const APP_URL = 'https://hirokanekurihara.github.io/chronology-app/';
-
-  if (navigator.share) {
-    btnShareNative.classList.remove('hidden');
-  }
-
-  btnShareCopy.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(APP_URL);
-      showSuccess('URLをクリップボードにコピーしました');
-    } catch (e) {
-      shareUrlInput.select();
-      document.execCommand('copy');
-      showSuccess('URLをクリップボードにコピーしました');
-    }
-  });
-
-  btnShareMail.addEventListener('click', () => {
-    const subject = encodeURIComponent('経時記録アプリ（クロノロジー）の共有');
-    const body = encodeURIComponent(`以下のURLからアプリにアクセスできます。\n\n${APP_URL}`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  });
-
-  btnShareLine.addEventListener('click', () => {
-    const text = encodeURIComponent(`経時記録アプリ（クロノロジー）\n${APP_URL}`);
-    window.open(`https://line.me/R/msg/text/?${text}`, '_blank');
-  });
-
-  btnShareNative.addEventListener('click', async () => {
-    try {
-      await navigator.share({
-        title: '経時記録アプリ（クロノロジー）',
-        url: APP_URL
-      });
-    } catch (e) {
-      console.log('Share failed or cancelled', e);
-    }
-  });
-
-  // 設定タブの並び替え初期化
-  const settingsSortableList = el('settings-sortable-list');
-  const savedOrder = localStorage.getItem('chronolo_settings_order');
-  
-  if (savedOrder) {
-    try {
-      const orderArray = JSON.parse(savedOrder);
-      const items = Array.from(settingsSortableList.children);
-      orderArray.forEach(id => {
-        const item = items.find(el => el.dataset.settingId === id);
-        if (item) settingsSortableList.appendChild(item);
-      });
-    } catch(e) { console.warn('Failed to parse settings order', e); }
-  }
-
-  Sortable.create(settingsSortableList, {
-    handle: '.drag-handle',
-    animation: 150,
-    ghostClass: 'sortable-ghost',
-    onEnd: () => {
-      const currentOrder = Array.from(settingsSortableList.children).map(el => el.dataset.settingId);
-      localStorage.setItem('chronolo_settings_order', JSON.stringify(currentOrder));
-    }
-  });
-
-  // メンバー管理用
   const listMembers = el('list-members');
   const addMemberForm = el('add-member-form');
   const newMemberEmail = el('new-member-email');
+  const newMemberName = el('new-member-name');
   const btnAddMember = el('btn-add-member');
 
   const newTeamName = el('new-team-name');
@@ -654,31 +587,12 @@
   const btnCancelEditTeam = el('btn-cancel-edit-team');
   const teamSearch = el('team-search');
 
-  // 班一覧（稼働中は常時表示、終了した班だけ折りたたみ）
   const listTeamsActive = el('list-teams-active');
   const groupArchived = el('group-archived');
   const btnToggleArchived = el('btn-toggle-archived');
   const listTeamsArchived = el('list-teams-archived');
   const countArchived = el('count-archived');
   const iconArchived = el('icon-archived');
-
-  let archivedGroupOpen = localStorage.getItem('chronolo_group_archived_open') === '1';
-
-  function applyArchivedGroupState() {
-    if (archivedGroupOpen) {
-      listTeamsArchived.classList.remove('hidden');
-      iconArchived.textContent = '▲ 閉じる';
-    } else {
-      listTeamsArchived.classList.add('hidden');
-      iconArchived.textContent = '▼ 開く';
-    }
-  }
-
-  btnToggleArchived.addEventListener('click', () => {
-    archivedGroupOpen = !archivedGroupOpen;
-    localStorage.setItem('chronolo_group_archived_open', archivedGroupOpen ? '1' : '0');
-    applyArchivedGroupState();
-  });
 
   const newTemplateContent = el('new-template-content');
   const newTemplateFrom = el('new-template-from');
@@ -713,7 +627,6 @@
   const pdfExportBody = el('pdf-export-body');
 
   let editingTeamId = null;
-
   const editEntryModal = el('edit-entry-modal');
   const editEntryDatetime = el('edit-entry-datetime');
   const editEntryFrom = el('edit-entry-from');
@@ -730,10 +643,87 @@
   let allTeams = [];
   let allowedEmails = [];
   let adminEmails = [];
+  let userNames = {}; // メールアドレス → 表示名 のマッピング
   let activeTeamId = localStorage.getItem('chronolo_active_team') || '';
   let isNetworkEnabled = true;
   let lastSearchResults = [];
+  let archivedGroupOpen = localStorage.getItem('chronolo_group_archived_open') === '1';
+
   headerShowArchived.checked = localStorage.getItem('chronolo_show_archived') === '1';
+
+  // ── 設定タブ並び替え（SortableJS） ──────────────────────────
+  const settingsSortableList = el('settings-sortable-list');
+
+  function applySavedSettingsOrder() {
+    const saved = localStorage.getItem('chronolo_settings_order');
+    if (!saved) return;
+    try {
+      const order = JSON.parse(saved);
+      order.forEach(id => {
+        const card = settingsSortableList.querySelector(`[data-setting-id="${id}"]`);
+        if (card) settingsSortableList.appendChild(card);
+      });
+    } catch (e) { /* 保存データが壊れていても無視 */ }
+  }
+  applySavedSettingsOrder();
+
+  Sortable.create(settingsSortableList, {
+    handle: '.drag-handle',
+    animation: 180,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd() {
+      const order = Array.from(settingsSortableList.children)
+        .map(c => c.dataset.settingId)
+        .filter(Boolean);
+      localStorage.setItem('chronolo_settings_order', JSON.stringify(order));
+    }
+  });
+
+  // ── URL共有 ───────────────────────────────────────────────
+  if (navigator.share) el('btn-share-native').classList.remove('hidden');
+
+  el('btn-share-copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(APP_URL);
+      showSuccess('URLをクリップボードにコピーしました。');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = APP_URL;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showSuccess('URLをコピーしました。');
+    }
+  });
+
+  el('btn-share-mail').addEventListener('click', () => {
+    const subject = encodeURIComponent('クロノロジー（経時記録アプリ）のご案内');
+    const body = encodeURIComponent(
+      'クロノロジー（災害対応の経時記録アプリ）をご利用ください。\n\n' +
+      '▼ アプリURL\n' + APP_URL + '\n\n' +
+      '※ Googleアカウントでサインインしてご利用ください。'
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  });
+
+  el('btn-share-line').addEventListener('click', () => {
+    const text = encodeURIComponent(
+      'クロノロジー（経時記録アプリ）\n' + APP_URL
+    );
+    window.open(`https://line.me/R/msg/text/?${text}`, '_blank');
+  });
+
+  el('btn-share-native').addEventListener('click', async () => {
+    try {
+      await navigator.share({
+        title: 'クロノロジー（経時記録アプリ）',
+        text: '災害対応の経時記録アプリです。',
+        url: APP_URL
+      });
+    } catch (e) { /* キャンセルは無視 */ }
+  });
 
   const TEAM_COLORS = [
     { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', divBg: '#dbeafe' },
@@ -764,14 +754,13 @@
   errorBannerClose.addEventListener('click', () => errorBanner.classList.add('hidden'));
 
   function isTerminatedError(err) {
-    const msg = err && err.message ? err.message : String(err);
-    return msg.includes('already been terminated');
+    return (err && err.message ? err.message : String(err)).includes('already been terminated');
   }
   let recoveringFromTermination = false;
   function handleTerminated() {
     if (recoveringFromTermination) return;
     recoveringFromTermination = true;
-    showError('内部の接続が古くなっているため、画面を自動的に再読み込みします。再読み込み後、もう一度操作をお試しください。');
+    showError('内部の接続が古くなっているため、画面を自動的に再読み込みします。');
     setTimeout(() => window.location.reload(), 1500);
   }
   async function addDocSafe(colRef, data) {
@@ -788,32 +777,29 @@
   }
   async function clearCollectionBatch(colRef) {
     const snap = await getDocs(colRef);
-    const docs = snap.docs;
-    for (let i = 0; i < docs.length; i += 500) {
-      const chunk = docs.slice(i, i + 500);
+    for (let i = 0; i < snap.docs.length; i += 500) {
       const batch = writeBatch(db);
-      chunk.forEach(d => batch.delete(d.ref));
+      snap.docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
       try { await batch.commit(); }
       catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
     }
   }
   async function deleteEntriesBatch(entries) {
     for (let i = 0; i < entries.length; i += 500) {
-      const chunk = entries.slice(i, i + 500);
       const batch = writeBatch(db);
-      chunk.forEach(e => batch.delete(doc(db, WS_PATH, WS_ID, 'entries', e.id)));
+      entries.slice(i, i + 500).forEach(e => batch.delete(doc(db, WS_PATH, WS_ID, 'entries', e.id)));
       try { await batch.commit(); }
       catch (err) { if (isTerminatedError(err)) handleTerminated(); throw err; }
     }
   }
 
   function toDatetimeLocalValue(date) {
-    const p = (n) => String(n).padStart(2, '0');
+    const p = n => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
   }
   function toDate(v) { if (!v) return new Date(); if (typeof v.toDate === 'function') return v.toDate(); return new Date(v); }
   function formatDatePart(d) { return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; }
-  function formatTimePart(d) { const p=(n)=>String(n).padStart(2,'0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
+  function formatTimePart(d) { const p = n => String(n).padStart(2,'0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
   function escapeHtml(str) {
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
@@ -824,18 +810,16 @@
     try {
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) { await r.unregister(); }
+        for (const r of regs) await r.unregister();
       }
       if ('caches' in window) {
         const keys = await caches.keys();
-        for (const key of keys) { await caches.delete(key); }
+        for (const key of keys) await caches.delete(key);
       }
-      localStorage.clear();
-      sessionStorage.clear();
-      const baseUrl = window.location.href.split('?')[0];
-      window.location.href = baseUrl + '?reset=' + Date.now();
-    } catch (e) {
-      alert('自動リセットに失敗しました。お手数ですが、設定アプリからSafariのWebサイトデータを手動で削除してください。');
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = window.location.href.split('?')[0] + '?reset=' + Date.now();
+    } catch {
+      alert('自動リセットに失敗しました。設定アプリからSafariのWebサイトデータを手動で削除してください。');
       btnResetCache.textContent = '画面が進まない場合はこちら（キャッシュをリセット）';
       btnResetCache.disabled = false;
     }
@@ -853,26 +837,22 @@
   btnGoogleSignin.addEventListener('click', async () => {
     signinError.classList.add('hidden');
     try { await signInWithRedirect(auth, googleProvider); }
-    catch(err) { signinError.textContent = 'サインインに失敗しました：' + (err.message || err); signinError.classList.remove('hidden'); }
+    catch(err) { signinError.textContent = 'サインインに失敗しました：' + (err.message||err); signinError.classList.remove('hidden'); }
   });
-
   btnGoogleSigninPopup.addEventListener('click', async () => {
     signinError.classList.add('hidden');
     try { await signInWithPopup(auth, googleProvider); }
-    catch(err) { signinError.textContent = 'ポップアップでのサインインに失敗しました（この端末ではこの方式も使えない可能性があります）：' + (err.message || err); signinError.classList.remove('hidden'); }
+    catch(err) { signinError.textContent = 'ポップアップでのサインインに失敗しました：' + (err.message||err); signinError.classList.remove('hidden'); }
   });
-
-  getRedirectResult(auth).catch((err) => {
-    console.error('リダイレクトログインでエラーが発生しました：', err);
-    signinError.textContent = 'ログインに失敗しました：' + (err.message || err);
+  getRedirectResult(auth).catch(err => {
+    signinError.textContent = 'ログインに失敗しました：' + (err.message||err);
     signinError.classList.remove('hidden');
   });
-
   btnSignout.addEventListener('click', async () => {
     try { await signOut(auth); } catch(err) { showError('ログアウトに失敗しました：' + (err.message||err)); }
   });
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, user => {
     if (user) {
       currentUser = user;
       signinOverlay.classList.add('hidden');
@@ -884,9 +864,9 @@
       initDefaultDatetime();
     } else {
       currentUser = null;
-      [entriesUnsub, templatesUnsub, teamsUnsub, accessUnsub].forEach(u => { if(u) u(); });
+      [entriesUnsub, templatesUnsub, teamsUnsub, accessUnsub].forEach(u => u && u());
       entriesUnsub = templatesUnsub = teamsUnsub = accessUnsub = null;
-      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = []; allowedEmails = []; adminEmails = [];
+      allEntries = []; allTemplates = {content:[],from:[],to:[]}; allTeams = []; allowedEmails = []; adminEmails = []; userNames = {};
       appRoot.classList.add('hidden'); appRoot.classList.remove('flex');
       signinOverlay.classList.remove('hidden');
     }
@@ -909,78 +889,88 @@
 
     accessUnsub = onSnapshot(
       doc(db, WS_PATH, WS_ID, 'settings', 'access_control'),
-      (snap) => {
-        const data = snap.exists() ? snap.data() : { allowedEmails: [], adminEmails: [] };
+      snap => {
+        const data = snap.exists() ? snap.data() : { allowedEmails: [], adminEmails: [], userNames: {} };
         allowedEmails = data.allowedEmails || [];
         adminEmails = data.adminEmails || [];
+        userNames = data.userNames || {};
         renderMembersUI();
       },
-      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('アクセス権限の取得に失敗しました：', err); }
+      err => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('アクセス権限取得失敗：', err); }
     );
 
     entriesUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'entries'), orderBy('timestamp','asc')),
       { includeMetadataChanges: true },
-      (snap) => {
+      snap => {
         allEntries = snap.docs.map(d => ({id:d.id,...d.data()}));
         renderRecordList();
-        syncBadge.textContent = snap.metadata.hasPendingWrites ? '🔄 未同期あり' : '✅ 同期済み';
-        syncBadge.classList.toggle('bg-yellow-400', snap.metadata.hasPendingWrites);
-        syncBadge.classList.toggle('text-yellow-900', snap.metadata.hasPendingWrites);
-        syncBadge.classList.toggle('bg-white/20', !snap.metadata.hasPendingWrites);
+        const pending = snap.metadata.hasPendingWrites;
+        syncBadge.textContent = pending ? '🔄 未同期あり' : '✅ 同期済み';
+        syncBadge.classList.toggle('bg-yellow-400', pending);
+        syncBadge.classList.toggle('text-yellow-900', pending);
+        syncBadge.classList.toggle('bg-white/20', !pending);
       },
-      (err) => {
+      err => {
         if (isTerminatedError(err)) { handleTerminated(); return; }
-        if (err.code === 'permission-denied') { showError('アクセス権限がありません。Firebaseのセキュリティルール、またはメンバー管理の許可リストを確認してください。'); }
-        else { showError('記録の取得に失敗しました：' + (err.message||err)); }
+        if (err.code === 'permission-denied') showError('アクセス権限がありません。メンバー管理の許可リストを確認してください。');
+        else showError('記録の取得に失敗しました：' + (err.message||err));
       }
     );
 
     templatesUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'templates'), orderBy('createdAtLocal','asc')),
-      (snap) => {
+      snap => {
         allTemplates = { content: [], from: [], to: [] };
         snap.docs.forEach(d => { const data = d.data(); if (allTemplates[data.type]) allTemplates[data.type].push({id:d.id, text:data.text||''}); });
         renderTemplateSelects();
         renderTemplateLists();
       },
-      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('定型文の取得に失敗しました：', err); }
+      err => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('定型文取得失敗：', err); }
     );
 
     teamsUnsub = onSnapshot(
       query(collection(db, WS_PATH, WS_ID, 'teams'), orderBy('createdAtLocal','asc')),
-      (snap) => {
+      snap => {
         allTeams = snap.docs.map(d => ({id:d.id,...d.data()}));
         renderTeamUI();
       },
-      (err) => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('班情報の取得に失敗しました：', err); }
+      err => { if (isTerminatedError(err)) { handleTerminated(); return; } console.warn('班情報取得失敗：', err); }
     );
   }
 
   function renderMembersUI() {
     if (!currentUser) return;
-    // 自分が管理者かどうか（まだ誰も登録されていない初期状態は特例として操作可能にする）
     const isEffectivelyAdmin = adminEmails.includes(currentUser.email) || allowedEmails.length === 0;
-
     addMemberForm.classList.toggle('hidden', !isEffectivelyAdmin);
 
     if (allowedEmails.length === 0) {
-      listMembers.innerHTML = '<li class="text-xs text-gray-400 px-2 py-1">メンバーが登録されていません（現在は固定管理者のみ有効です）。下のフォームからあなた自身のメールアドレスを追加してください。</li>';
+      listMembers.innerHTML = '<li class="text-xs text-gray-400 px-2 py-1">メンバーが登録されていません。下のフォームからあなた自身のメールアドレスを追加してください。</li>';
       return;
     }
-
     listMembers.innerHTML = allowedEmails.map(email => {
       const isAdmin = adminEmails.includes(email);
       const isMe = email === currentUser.email;
-      // 削除ボタンは「自分が管理者」かつ「対象が自分以外」の時だけ表示（自分自身の誤削除防止）
+      const name = userNames[email] || '';
+
+      const displayNameHtml = name
+        ? `<div class="font-semibold text-gray-800 truncate">${escapeHtml(name)}</div><div class="text-[10px] text-gray-500 truncate">${escapeHtml(email)}</div>`
+        : `<div class="font-semibold text-gray-800 truncate">${escapeHtml(email)}</div>`;
+
+      const editNameBtn = isEffectivelyAdmin
+        ? `<button data-email="${email}" class="btn-edit-member-name text-blue-500 text-xs font-bold px-2 py-1.5 bg-blue-50 hover:bg-blue-100 rounded">✏️名前</button>`
+        : '';
       const delBtn = (isEffectivelyAdmin && !isMe)
         ? `<button data-email="${email}" class="btn-delete-member text-red-500 text-xs font-bold px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded">削除</button>`
         : `<span class="w-8"></span>`;
 
-      return `<li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm border border-gray-200 shadow-sm">
-        <span class="truncate flex-1 mr-2">${escapeHtml(email)}</span>
-        <div class="flex items-center gap-3 shrink-0">
-          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+      return `<li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm border border-gray-200 shadow-sm gap-2">
+        <div class="min-w-0 flex-1">
+          ${displayNameHtml}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          ${editNameBtn}
+          <label class="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer whitespace-nowrap ml-1">
             <input type="checkbox" data-email="${email}" class="cb-admin-toggle rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isAdmin ? 'checked' : ''}>
             管理者
           </label>
@@ -992,56 +982,81 @@
 
   btnAddMember.addEventListener('click', async () => {
     const email = newMemberEmail.value.trim().toLowerCase();
+    const name = newMemberName.value.trim();
     if (!email) { showError('追加するメールアドレスを入力してください。'); return; }
     if (allowedEmails.includes(email)) { showError('そのメールアドレスは既に登録されています。'); return; }
 
     const newAllowed = [...allowedEmails, email];
     const newAdmins = [...adminEmails];
-    // 最初の1人目を追加した場合は、自動的に管理者にする（初回移行のブートストラップ用）
     if (newAllowed.length === 1) newAdmins.push(email);
+
+    const newUserNames = { ...userNames };
+    if (name) newUserNames[email] = name;
 
     try {
       await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), {
         allowedEmails: newAllowed,
-        adminEmails: newAdmins
+        adminEmails: newAdmins,
+        userNames: newUserNames
       }, { merge: true });
       newMemberEmail.value = '';
+      newMemberName.value = '';
       showSuccess(email + ' を追加しました。');
-    } catch (err) {
-      if (!isTerminatedError(err)) showError('メンバーの追加に失敗しました：' + (err.message || err));
-    }
+    } catch (err) { if (!isTerminatedError(err)) showError('メンバーの追加に失敗しました：' + (err.message||err)); }
   });
 
-  listMembers.addEventListener('click', async (e) => {
+  listMembers.addEventListener('click', async e => {
     const delBtn = e.target.closest('.btn-delete-member');
     const cbAdmin = e.target.closest('.cb-admin-toggle');
+    const editNameBtn = e.target.closest('.btn-edit-member-name');
 
     if (delBtn) {
       const email = delBtn.dataset.email;
       if (!confirm(`${email} を削除しますか？\nこのユーザーはアプリにログインできなくなります。`)) return;
-      const newAllowed = allowedEmails.filter(x => x !== email);
-      const newAdmins = adminEmails.filter(x => x !== email);
+
+      const newUserNames = { ...userNames };
+      delete newUserNames[email];
+
       try {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), { allowedEmails: newAllowed, adminEmails: newAdmins }, { merge: true });
+        await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), {
+          allowedEmails: allowedEmails.filter(x => x !== email),
+          adminEmails: adminEmails.filter(x => x !== email),
+          userNames: newUserNames
+        }, { merge: true });
         showSuccess(email + ' を削除しました。');
-      } catch (err) {
-        if (!isTerminatedError(err)) showError('メンバーの削除に失敗しました：' + (err.message || err));
+      } catch (err) { if (!isTerminatedError(err)) showError('メンバーの削除に失敗しました：' + (err.message||err)); }
+      return;
+    }
+
+    if (editNameBtn) {
+      const email = editNameBtn.dataset.email;
+      const currentName = userNames[email] || '';
+      const newName = prompt(`${email} の名前やメモを入力してください：`, currentName);
+      if (newName !== null) {
+        const newUserNames = { ...userNames };
+        if (newName.trim()) {
+          newUserNames[email] = newName.trim();
+        } else {
+          delete newUserNames[email];
+        }
+        try {
+          await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), { userNames: newUserNames }, { merge: true });
+        } catch (err) { if (!isTerminatedError(err)) showError('名前の更新に失敗しました：' + (err.message||err)); }
       }
+      return;
     }
 
     if (cbAdmin) {
       const email = cbAdmin.dataset.email;
       const isChecked = cbAdmin.checked;
       let newAdmins = [...adminEmails];
-
       if (isChecked && !newAdmins.includes(email)) newAdmins.push(email);
       else if (!isChecked) newAdmins = newAdmins.filter(x => x !== email);
-
       try {
         await setDocSafe(doc(db, WS_PATH, WS_ID, 'settings', 'access_control'), { adminEmails: newAdmins }, { merge: true });
       } catch (err) {
-        cbAdmin.checked = !isChecked; // エラー時はチェック状態を元に戻す
-        if (!isTerminatedError(err)) showError('権限の変更に失敗しました：' + (err.message || err));
+        cbAdmin.checked = !isChecked;
+        if (!isTerminatedError(err)) showError('権限の変更に失敗しました：' + (err.message||err));
       }
     }
   });
@@ -1052,27 +1067,36 @@
     return entries.filter(e => e.team_id === activeTeamId);
   }
 
+  function applyArchivedGroupState() {
+    if (archivedGroupOpen) {
+      listTeamsArchived.classList.remove('hidden');
+      iconArchived.textContent = '▲ 閉じる';
+    } else {
+      listTeamsArchived.classList.add('hidden');
+      iconArchived.textContent = '▼ 開く';
+    }
+  }
+  btnToggleArchived.addEventListener('click', () => {
+    archivedGroupOpen = !archivedGroupOpen;
+    localStorage.setItem('chronolo_group_archived_open', archivedGroupOpen ? '1' : '0');
+    applyArchivedGroupState();
+  });
+
   function buildTeamCardHtml(t) {
     const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' };
     const isActiveHere = t.id === activeTeamId;
-    const statusBadge = t.isArchived
-      ? '<span class="ml-1 inline-block text-[10px] px-1 rounded bg-gray-500 text-white align-middle">終了</span>'
-      : '';
+    const statusBadge = t.isArchived ? '<span class="ml-1 inline-block text-[10px] px-1 rounded bg-gray-500 text-white align-middle">終了</span>' : '';
     const created = t.createdAtLocal ? formatDatePart(new Date(t.createdAtLocal)) : '';
     return `<li class="flex items-start justify-between rounded-lg px-3 py-2 text-sm ${isActiveHere ? 'ring-2 ring-blue-400' : ''}" style="background:${c.bg}; border:1px solid ${c.border};">
       <div class="min-w-0 mr-2">
-        <p class="font-semibold truncate" style="color:${c.text};">
-          ${escapeHtml(t.name)}${statusBadge}${isActiveHere ? ' <span class="text-[10px] font-normal text-blue-700">（この端末で使用中）</span>' : ''}
-        </p>
+        <p class="font-semibold truncate" style="color:${c.text};">${escapeHtml(t.name)}${statusBadge}${isActiveHere ? ' <span class="text-[10px] font-normal text-blue-700">（この端末で使用中）</span>' : ''}</p>
         <p class="text-[11px] text-gray-500 truncate">${escapeHtml(t.members||'（メンバー未設定）')}</p>
         ${t.memo ? `<p class="text-[11px] text-gray-500 mt-0.5 line-clamp-2">📌 ${escapeHtml(t.memo)}</p>` : ''}
         ${created ? `<p class="text-[10px] text-gray-400 mt-0.5">作成日: ${escapeHtml(created)}</p>` : ''}
       </div>
       <div class="flex flex-col items-end gap-1 shrink-0">
         <button data-team-id="${t.id}" class="btn-edit-team text-blue-500 hover:text-blue-700 text-xs font-bold whitespace-nowrap">✏️ 編集</button>
-        <button data-team-id="${t.id}" class="btn-toggle-archive text-xs ${t.isArchived ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'} font-semibold whitespace-nowrap">
-          ${t.isArchived ? '現役に戻す' : '終了にする'}
-        </button>
+        <button data-team-id="${t.id}" class="btn-toggle-archive text-xs ${t.isArchived ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-500 hover:text-gray-700'} font-semibold whitespace-nowrap">${t.isArchived ? '現役に戻す' : '終了にする'}</button>
         <button data-team-id="${t.id}" class="btn-delete-team text-red-400 hover:text-red-600 text-[11px] font-bold mt-0.5">削除</button>
       </div>
     </li>`;
@@ -1084,35 +1108,22 @@
       '<option value="">（班を選択してください）</option>',
       '<option value="ALL">すべての班を表示（入力不可）</option>'
     ];
-
-    const activeTeamsAllHeader = allTeams.filter(t => !t.isArchived);
-    const archivedTeamsAllHeader = allTeams.filter(t => t.isArchived);
-
-    activeTeamsAllHeader.forEach(t => {
-      baseOptions.push(`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`);
-    });
-
-    if (showArchived && archivedTeamsAllHeader.length > 0) {
-      baseOptions.push('<option value="__sep__" disabled>―― 終了した班 ――</option>');
-      archivedTeamsAllHeader.forEach(t => {
-        baseOptions.push(`<option value="${escapeHtml(t.id)}">[過去] ${escapeHtml(t.name)}</option>`);
-      });
+    allTeams.filter(t => !t.isArchived).forEach(t => baseOptions.push(`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`));
+    if (showArchived) {
+      const archived = allTeams.filter(t => t.isArchived);
+      if (archived.length > 0) {
+        baseOptions.push('<option value="__sep__" disabled>―― 終了した班 ――</option>');
+        archived.forEach(t => baseOptions.push(`<option value="${escapeHtml(t.id)}">[過去] ${escapeHtml(t.name)}</option>`));
+      }
     }
-
     headerTeamSelect.innerHTML = baseOptions.join('');
-
     if (activeTeamId !== 'ALL' && activeTeamId !== '' && !allTeams.find(t => t.id === activeTeamId)) {
-      activeTeamId = '';
-      localStorage.removeItem('chronolo_active_team');
+      activeTeamId = ''; localStorage.removeItem('chronolo_active_team');
     }
     headerTeamSelect.value = activeTeamId;
 
     const keyword = teamSearch.value.trim().toLowerCase();
-    const filterTeam = (t) => {
-      if (!keyword) return true;
-      return `${t.name||''} ${t.members||''} ${t.memo||''}`.toLowerCase().includes(keyword);
-    };
-
+    const filterTeam = t => !keyword || `${t.name||''} ${t.members||''} ${t.memo||''}`.toLowerCase().includes(keyword);
     const activeTeams = allTeams.filter(t => !t.isArchived && filterTeam(t));
     const archivedTeamsAll = allTeams.filter(t => t.isArchived);
     const archivedTeams = archivedTeamsAll.filter(filterTeam);
@@ -1130,14 +1141,12 @@
         ? '<li class="text-xs text-gray-400 px-1 py-2">該当する班はありません</li>'
         : archivedTeams.map(buildTeamCardHtml).join('');
     }
-
     if (keyword && archivedTeamsAll.length > 0) {
       listTeamsArchived.classList.remove('hidden');
       iconArchived.textContent = '▲ 閉じる';
     } else {
       applyArchivedGroupState();
     }
-
     renderRecordList();
   }
 
@@ -1148,26 +1157,19 @@
     searchStart.value=''; searchEnd.value=''; searchKeyword.value='';
     renderSearchResults([]);
   });
-
   headerShowArchived.addEventListener('change', () => {
     localStorage.setItem('chronolo_show_archived', headerShowArchived.checked ? '1' : '0');
     if (!headerShowArchived.checked) {
-      const activeTeamObj = allTeams.find(t => t.id === activeTeamId);
-      if (activeTeamObj && activeTeamObj.isArchived) {
-        activeTeamId = '';
-        localStorage.removeItem('chronolo_active_team');
-      }
+      const obj = allTeams.find(t => t.id === activeTeamId);
+      if (obj && obj.isArchived) { activeTeamId = ''; localStorage.removeItem('chronolo_active_team'); }
     }
     renderTeamUI();
   });
-
   teamSearch.addEventListener('input', () => renderTeamUI());
 
   function resetTeamForm() {
     editingTeamId = null;
-    newTeamName.value = '';
-    newTeamMembers.value = '';
-    newTeamMemo.value = '';
+    newTeamName.value = ''; newTeamMembers.value = ''; newTeamMemo.value = '';
     teamFormTitle.textContent = '新しい班を追加';
     btnAddTeam.textContent = '＋ 班を追加';
     btnCancelEditTeam.classList.add('hidden');
@@ -1176,22 +1178,14 @@
 
   btnAddTeam.addEventListener('click', async () => {
     if (!currentUser) return;
-    const name = newTeamName.value.trim();
-    const members = newTeamMembers.value.trim();
-    const memo = newTeamMemo.value.trim();
+    const name = newTeamName.value.trim(), members = newTeamMembers.value.trim(), memo = newTeamMemo.value.trim();
     if (!name) { showError('班の名前を入力してください。'); return; }
     try {
       if (editingTeamId) {
         await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', editingTeamId), { name, members, memo }, { merge: true });
         showSuccess('班の情報を更新しました。');
       } else {
-        await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), {
-          name,
-          members,
-          memo,
-          isArchived: false,
-          createdAtLocal: Date.now()
-        });
+        await addDocSafe(collection(db, WS_PATH, WS_ID, 'teams'), { name, members, memo, isArchived: false, createdAtLocal: Date.now() });
         showSuccess('班を追加しました。');
       }
       resetTeamForm();
@@ -1199,19 +1193,15 @@
   });
 
   [listTeamsActive, listTeamsArchived].forEach(ul => {
-    ul.addEventListener('click', async (e) => {
+    ul.addEventListener('click', async e => {
       const editBtn = e.target.closest('.btn-edit-team');
       const toggleBtn = e.target.closest('.btn-toggle-archive');
       const delBtn = e.target.closest('.btn-delete-team');
-
       if (editBtn) {
-        const tId = editBtn.dataset.teamId;
-        const team = allTeams.find(t => t.id === tId);
+        const team = allTeams.find(t => t.id === editBtn.dataset.teamId);
         if (team) {
-          editingTeamId = tId;
-          newTeamName.value = team.name;
-          newTeamMembers.value = team.members || '';
-          newTeamMemo.value = team.memo || '';
+          editingTeamId = team.id;
+          newTeamName.value = team.name; newTeamMembers.value = team.members||''; newTeamMemo.value = team.memo||'';
           teamFormTitle.textContent = '班の情報を編集';
           btnAddTeam.textContent = '✓ 更新する';
           btnCancelEditTeam.classList.remove('hidden');
@@ -1219,26 +1209,19 @@
         }
         return;
       }
-
       if (toggleBtn && currentUser) {
-        const tId = toggleBtn.dataset.teamId;
-        const team = allTeams.find(t => t.id === tId);
+        const team = allTeams.find(t => t.id === toggleBtn.dataset.teamId);
         if (!team) return;
         const toArchived = !team.isArchived;
-        if (toArchived) {
-          if (!confirm('この班を「終了した班」として扱いますか？\n\n・上部メニューからは基本的に非表示になります（チェックを入れれば表示可能）\n・これまでの記録データは一切削除されません。\n')) return;
-        }
+        if (toArchived && !confirm('この班を「終了した班」として扱いますか？\n\n・上部メニューからは基本的に非表示になります\n・これまでの記録データは一切削除されません。')) return;
         try {
-          await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', tId), { isArchived: toArchived }, { merge: true });
+          await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id), { isArchived: toArchived }, { merge: true });
           showSuccess(toArchived ? '班を終了状態にしました。（記録は残ります）' : '班を現役に戻しました。');
-        } catch (err) {
-          if (!isTerminatedError(err)) showError('状態の更新に失敗しました：' + (err.message || err));
-        }
+        } catch (err) { if (!isTerminatedError(err)) showError('状態の更新に失敗しました：' + (err.message||err)); }
         return;
       }
-
       if (delBtn && currentUser) {
-        if (!confirm('この班を削除しますか？\n\n※この班に紐づく記録データ自体は削除されません（記録は team_id 付きのまま残ります）。')) return;
+        if (!confirm('この班を削除しますか？\n\n※この班に紐づく記録データ自体は削除されません。')) return;
         try {
           await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'teams', delBtn.dataset.teamId));
           if (editingTeamId === delBtn.dataset.teamId) resetTeamForm();
@@ -1248,10 +1231,7 @@
   });
 
   function buildTableRowsHtml(entriesAsc, { deletable, isAllMode = false }) {
-    let html = '';
-    let prevDate = null;
-    let prevTeamId = '__INIT__';
-
+    let html = '', prevDate = null, prevTeamId = '__INIT__';
     entriesAsc.forEach(entry => {
       const d = toDate(entry.timestamp);
       const dateStr = formatDatePart(d), timeStr = formatTimePart(d);
@@ -1262,33 +1242,19 @@
         const tName = t ? t.name : '（班未設定）';
         const tMembers = (t && t.members) ? t.members : '';
         const c = t ? getTeamColor(entry.team_id) : null;
-        const divBg = c ? c.divBg : '#f3f4f6';
-        const divText = c ? c.text : '#374151';
-        html += `<tr>
-          <td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText}; line-height:1.5;">
-            ▶ ${escapeHtml(tName)}${tMembers ? `<span style="font-weight:normal; font-size:10px; margin-left:6px;">（メンバー：${escapeHtml(tMembers)}）</span>` : ''}
-          </td>
-        </tr>`;
+        const divBg = c ? c.divBg : '#f3f4f6', divText = c ? c.text : '#374151';
+        html += `<tr><td colspan="4" style="padding:6px 8px; font-size:11px; font-weight:bold; color:${divText}; background:${divBg}; border-top:2px solid ${divText}; border-bottom:1px solid ${divText}; line-height:1.5;">▶ ${escapeHtml(tName)}${tMembers ? `<span style="font-weight:normal; font-size:10px; margin-left:6px;">（メンバー：${escapeHtml(tMembers)}）</span>` : ''}</td></tr>`;
         prevTeamId = entry.team_id;
       }
 
       const actionBtns = deletable
-        ? `<span class="inline-flex gap-2 ml-2 align-middle">
-             <button data-entry-id="${entry.id}" class="btn-edit-entry text-blue-400 hover:text-blue-600 text-xs">✏️</button>
-             <button data-entry-id="${entry.id}" class="btn-delete-entry text-gray-300 hover:text-red-500 text-xs">✕</button>
-           </span>`
+        ? `<span class="inline-flex gap-2 ml-2 align-middle"><button data-entry-id="${entry.id}" class="btn-edit-entry text-blue-400 hover:text-blue-600 text-xs">✏️</button><button data-entry-id="${entry.id}" class="btn-delete-entry text-gray-300 hover:text-red-500 text-xs">✕</button></span>`
         : '';
 
-      let rowClass = 'border-b border-gray-100 align-top';
-      let rowStyle = '';
-      if (entry.entry_type === 'work_start') {
-        rowClass += ' bg-green-50';
-      } else if (entry.entry_type === 'work_end') {
-        rowClass += ' bg-red-50';
-      } else if (isAllMode && entry.team_id) {
-        const c = getTeamColor(entry.team_id);
-        if (c) rowStyle = `background-color:${c.bg};`;
-      }
+      let rowClass = 'border-b border-gray-100 align-top', rowStyle = '';
+      if (entry.entry_type === 'work_start') rowClass += ' bg-green-50';
+      else if (entry.entry_type === 'work_end') rowClass += ' bg-red-50';
+      else if (isAllMode && entry.team_id) { const c = getTeamColor(entry.team_id); if (c) rowStyle = `background-color:${c.bg};`; }
 
       let teamBadge = '';
       if (isAllMode && entry.team_id) {
@@ -1297,10 +1263,7 @@
       }
 
       html += `<tr class="${rowClass}" style="${rowStyle}">
-        <td class="py-2 px-1 text-center" style="line-height:1.5;">
-          ${showDate ? `<div class="text-[10px] text-blue-600 font-bold" style="line-height:1.3;">${escapeHtml(dateStr)}</div>` : ''}
-          <div class="text-xs text-gray-700" style="line-height:1.3;">${escapeHtml(timeStr)}</div>
-        </td>
+        <td class="py-2 px-1 text-center" style="line-height:1.5;">${showDate ? `<div class="text-[10px] text-blue-600 font-bold" style="line-height:1.3;">${escapeHtml(dateStr)}</div>` : ''}<div class="text-xs text-gray-700" style="line-height:1.3;">${escapeHtml(timeStr)}</div></td>
         <td class="py-2 px-1 text-center text-xs" style="line-height:1.5; word-break:break-word; overflow-wrap:break-word;">${escapeHtml(entry.from)}</td>
         <td class="py-2 px-1 text-center text-xs" style="line-height:1.5; word-break:break-word; overflow-wrap:break-word;">${escapeHtml(entry.to)}</td>
         <td class="py-2 px-2 text-sm whitespace-pre-wrap" style="line-height:1.6; word-break:break-word; overflow-wrap:break-word;">${teamBadge}${escapeHtml(entry.content)}${actionBtns}</td>
@@ -1328,9 +1291,8 @@
     recordListScroll.scrollTop = recordListScroll.scrollHeight;
   }
 
-  recordListBody.addEventListener('click', async (e) => {
+  recordListBody.addEventListener('click', async e => {
     if (!currentUser) return;
-
     const delBtn = e.target.closest('.btn-delete-entry');
     if (delBtn) {
       if (!confirm('この記録を削除しますか？')) return;
@@ -1338,53 +1300,31 @@
       catch(err) { if(!isTerminatedError(err)) showError('記録の削除に失敗しました：' + (err.message||err)); }
       return;
     }
-
     const editBtn = e.target.closest('.btn-edit-entry');
     if (editBtn) {
-      const entryId = editBtn.dataset.entryId;
-      const entry = allEntries.find(e => e.id === entryId);
+      const entry = allEntries.find(e => e.id === editBtn.dataset.entryId);
       if (entry) {
-        editingEntryId = entryId;
+        editingEntryId = entry.id;
         editEntryDatetime.value = toDatetimeLocalValue(toDate(entry.timestamp));
-        editEntryFrom.value = entry.from || '';
-        editEntryTo.value = entry.to || '';
-        editEntryContent.value = entry.content || '';
+        editEntryFrom.value = entry.from||''; editEntryTo.value = entry.to||''; editEntryContent.value = entry.content||'';
         editEntryModal.classList.remove('hidden');
       }
     }
   });
 
-  btnEditCancel.addEventListener('click', () => {
-    editEntryModal.classList.add('hidden');
-    editingEntryId = null;
-  });
-
+  btnEditCancel.addEventListener('click', () => { editEntryModal.classList.add('hidden'); editingEntryId = null; });
   btnEditSave.addEventListener('click', async () => {
     if (!editingEntryId || !currentUser) return;
-    const from = editEntryFrom.value.trim();
-    const to = editEntryTo.value.trim();
-    const content = editEntryContent.value.trim();
-    const datetimeStr = editEntryDatetime.value;
-
+    const from = editEntryFrom.value.trim(), to = editEntryTo.value.trim(), content = editEntryContent.value.trim(), datetimeStr = editEntryDatetime.value;
     if (!content) { showError('内容を入力してください。'); return; }
     if (!datetimeStr) { showError('日時を指定してください。'); return; }
-
     btnEditSave.disabled = true;
     try {
-      await setDocSafe(doc(db, WS_PATH, WS_ID, 'entries', editingEntryId), {
-        timestamp: new Date(datetimeStr),
-        from: from,
-        to: to,
-        content: content
-      }, { merge: true });
+      await setDocSafe(doc(db, WS_PATH, WS_ID, 'entries', editingEntryId), { timestamp: new Date(datetimeStr), from, to, content }, { merge: true });
       showSuccess('記録を更新しました。');
-      editEntryModal.classList.add('hidden');
-      editingEntryId = null;
-    } catch(err) {
-      if(!isTerminatedError(err)) showError('記録の更新に失敗しました：' + (err.message||err));
-    } finally {
-      btnEditSave.disabled = false;
-    }
+      editEntryModal.classList.add('hidden'); editingEntryId = null;
+    } catch(err) { if(!isTerminatedError(err)) showError('記録の更新に失敗しました：' + (err.message||err)); }
+    finally { btnEditSave.disabled = false; }
   });
 
   function initDefaultDatetime() { entryDatetimeInput.value = toDatetimeLocalValue(new Date()); updateDatetimePreview(); }
@@ -1403,8 +1343,7 @@
     fillSelect(selectTemplateContent, allTemplates.content, '定型文を挿入');
   }
   function fillSelect(sel, items, ph) {
-    sel.innerHTML = `<option value="">${escapeHtml(ph)}</option>` +
-      items.map(it => `<option value="${escapeHtml(it.text)}">${escapeHtml(it.text)}</option>`).join('');
+    sel.innerHTML = `<option value="">${escapeHtml(ph)}</option>` + items.map(it => `<option value="${escapeHtml(it.text)}">${escapeHtml(it.text)}</option>`).join('');
   }
   selectTemplateFrom.addEventListener('change', () => { if(selectTemplateFrom.value) entryFrom.value = selectTemplateFrom.value; selectTemplateFrom.value=''; });
   selectTemplateTo.addEventListener('change', () => { if(selectTemplateTo.value) entryTo.value = selectTemplateTo.value; selectTemplateTo.value=''; });
@@ -1424,10 +1363,7 @@
   function renderOneTemplateList(ul, items) {
     ul.innerHTML = items.length === 0
       ? '<li class="text-xs text-gray-400">登録済みの定型文はありません</li>'
-      : items.map(it => `<li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-          <span class="truncate mr-2">${escapeHtml(it.text)}</span>
-          <button data-id="${it.id}" class="btn-template-delete text-red-400 hover:text-red-600 text-xs font-bold shrink-0">削除</button>
-        </li>`).join('');
+      : items.map(it => `<li class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"><span class="truncate mr-2">${escapeHtml(it.text)}</span><button data-id="${it.id}" class="btn-template-delete text-red-400 hover:text-red-600 text-xs font-bold shrink-0">削除</button></li>`).join('');
   }
   document.querySelectorAll('.btn-template-add').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1441,7 +1377,7 @@
     });
   });
   [listTemplateContent, listTemplateFrom, listTemplateTo].forEach(ul => {
-    ul.addEventListener('click', async (e) => {
+    ul.addEventListener('click', async e => {
       const btn = e.target.closest('.btn-template-delete');
       if (!btn || !currentUser) return;
       try { await deleteDocSafe(doc(db, WS_PATH, WS_ID, 'templates', btn.dataset.id)); }
@@ -1451,32 +1387,23 @@
 
   async function saveEntry(from, to, content, entryType) {
     if (!currentUser) return;
-    if (!activeTeamId || activeTeamId === 'ALL') {
-      showError('記録を追加するには、画面上部のメニューから特定の班を選択してください。');
-      throw new Error('班未選択');
-    }
+    if (!activeTeamId || activeTeamId === 'ALL') { showError('記録を追加するには、画面上部のメニューから特定の班を選択してください。'); throw new Error('班未選択'); }
     let timestamp;
     if (toggleManualDatetime.checked) {
       if (!entryDatetimeInput.value) { showError('日時を指定してください。'); throw new Error('日時未指定'); }
       timestamp = new Date(entryDatetimeInput.value);
     } else { timestamp = new Date(); }
-    await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), {
-      timestamp, from, to, content, entry_type: entryType, team_id: activeTeamId, createdAt: serverTimestamp()
-    });
+    await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp, from, to, content, entry_type: entryType, team_id: activeTeamId, createdAt: serverTimestamp() });
   }
 
   btnSubmitEntry.addEventListener('click', async () => {
     const from = entryFrom.value.trim(), to = entryTo.value.trim(), content = entryContent.value.trim();
     if (!content) { showError('内容を入力してください。'); return; }
     btnSubmitEntry.disabled = true;
-    try {
-      await saveEntry(from, to, content, 'normal');
-      entryFrom.value=''; entryTo.value=''; entryContent.value='';
-      initDefaultDatetime();
-    } catch(err) { if(err.message !== '日時未指定' && err.message !== '班未選択' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
+    try { await saveEntry(from, to, content, 'normal'); entryFrom.value=''; entryTo.value=''; entryContent.value=''; initDefaultDatetime(); }
+    catch(err) { if(err.message !== '日時未指定' && err.message !== '班未選択' && !isTerminatedError(err)) showError('記録の保存に失敗しました：' + (err.message||err)); }
     finally { btnSubmitEntry.disabled = false; }
   });
-
   btnWorkStart.addEventListener('click', async () => {
     btnWorkStart.disabled = true;
     try { await saveEntry('','','【勤務開始】','work_start'); initDefaultDatetime(); }
@@ -1491,8 +1418,7 @@
   });
 
   function calculateWorkTime(entries) {
-    const events = entries
-      .filter(e => e.entry_type === 'work_start' || e.entry_type === 'work_end')
+    const events = entries.filter(e => e.entry_type === 'work_start' || e.entry_type === 'work_end')
       .sort((a,b) => toDate(a.timestamp).getTime() - toDate(b.timestamp).getTime());
     let currentStart = null, totalMs = 0, html = '', hasAnyData = false;
     events.forEach(e => {
@@ -1500,22 +1426,16 @@
       else if (e.entry_type === 'work_end' && currentStart) {
         hasAnyData = true;
         const sd = toDate(currentStart.timestamp), ed = toDate(e.timestamp);
-        const diff = ed.getTime() - sd.getTime();
-        totalMs += diff;
+        const diff = ed.getTime() - sd.getTime(); totalMs += diff;
         const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000);
-        html += `<div class="border-b border-gray-100 pb-1 mb-1">
-          ${formatDatePart(sd)} ${formatTimePart(sd)} 〜 ${formatDatePart(ed)} ${formatTimePart(ed)}
-          <span class="ml-2 font-semibold">（${h}時間${m}分）</span>
-        </div>`;
+        html += `<div class="border-b border-gray-100 pb-1 mb-1">${formatDatePart(sd)} ${formatTimePart(sd)} 〜 ${formatDatePart(ed)} ${formatTimePart(ed)}<span class="ml-2 font-semibold">（${h}時間${m}分）</span></div>`;
         currentStart = null;
       }
     });
     if (currentStart) {
       hasAnyData = true;
       const sd = toDate(currentStart.timestamp);
-      html += `<div class="text-blue-600 font-semibold border-b border-gray-100 pb-1 mb-1">
-        ${formatDatePart(sd)} ${formatTimePart(sd)} 〜 勤務中（未終了）
-      </div>`;
+      html += `<div class="text-blue-600 font-semibold border-b border-gray-100 pb-1 mb-1">${formatDatePart(sd)} ${formatTimePart(sd)} 〜 勤務中（未終了）</div>`;
     }
     if (totalMs > 0) {
       const th = Math.floor(totalMs/3600000), tm = Math.floor((totalMs%3600000)/60000);
@@ -1531,23 +1451,19 @@
     if (results.length === 0) {
       searchListBody.innerHTML = ''; searchListEmpty.classList.remove('hidden');
       searchListEmpty.textContent = '該当する記録がありません';
-      searchCount.textContent = ''; workTimeSummaryCard.classList.add('hidden');
-      return;
+      searchCount.textContent = ''; workTimeSummaryCard.classList.add('hidden'); return;
     }
     searchListEmpty.classList.add('hidden');
     searchCount.textContent = `${results.length}件`;
-    const isAllMode = activeTeamId === 'ALL';
-    searchListBody.innerHTML = buildTableRowsHtml(results, { deletable: false, isAllMode });
+    searchListBody.innerHTML = buildTableRowsHtml(results, { deletable: false, isAllMode: activeTeamId === 'ALL' });
     workTimeSummaryCard.classList.remove('hidden');
     workTimeSummaryContent.innerHTML = calculateWorkTime(results).html;
   }
-
   btnSearch.addEventListener('click', () => {
     const startVal = searchStart.value ? new Date(searchStart.value) : null;
     const endVal = searchEnd.value ? new Date(searchEnd.value) : null;
     const kw = searchKeyword.value.trim().toLowerCase();
-    const targetEntries = getFilteredEntries(allEntries);
-    renderSearchResults(targetEntries.filter(e => {
+    renderSearchResults(getFilteredEntries(allEntries).filter(e => {
       const d = toDate(e.timestamp);
       if (startVal && d < startVal) return false;
       if (endVal && d > endVal) return false;
@@ -1565,30 +1481,16 @@
     const isAllMode = activeTeamId === 'ALL';
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
-
-    btnExportPdf.disabled = true;
-    btnExportPdf.textContent = '出力中…';
-
+    btnExportPdf.disabled = true; btnExportPdf.textContent = '出力中…';
     try {
       const now = new Date();
       pdfExportDate.textContent = `出力日時：${formatDatePart(now)} ${formatTimePart(now)}`;
-
       if (isAllMode) {
-        pdfAllTeamsSection.style.display = 'block';
-        pdfTeamHeader.style.display = 'none';
-
+        pdfAllTeamsSection.style.display = 'block'; pdfTeamHeader.style.display = 'none';
         const usedTeamIds = [...new Set(target.map(e => e.team_id).filter(Boolean))];
         const teamsInUse = allTeams.filter(t => usedTeamIds.includes(t.id));
-
         pdfAllTeamsCards.innerHTML = teamsInUse.length > 0
-          ? teamsInUse.map(t => {
-              const c = getTeamColor(t.id) || { bg: '#f9fafb', border: '#e5e7eb', text: '#374151' };
-              return `<div style="flex:0 0 auto; min-width:160px; max-width:220px; padding:8px 12px; border-radius:6px; border:2px solid ${c.border}; background:${c.bg};">
-                <div style="font-size:12px; font-weight:900; color:${c.text}; margin-bottom:4px;">${escapeHtml(t.name)}</div>
-                <div style="font-size:10px; color:#4b5563; line-height:1.5;">${escapeHtml(t.members || '（メンバー未設定）')}</div>
-                ${t.memo ? `<div style="font-size:10px; color:#6b7280; margin-top:2px;">📝 ${escapeHtml(t.memo)}</div>` : ''}
-              </div>`;
-            }).join('')
+          ? teamsInUse.map(t => { const c = getTeamColor(t.id) || { bg:'#f9fafb', border:'#e5e7eb', text:'#374151' }; return `<div style="flex:0 0 auto; min-width:160px; max-width:220px; padding:8px 12px; border-radius:6px; border:2px solid ${c.border}; background:${c.bg};"><div style="font-size:12px; font-weight:900; color:${c.text}; margin-bottom:4px;">${escapeHtml(t.name)}</div><div style="font-size:10px; color:#4b5563; line-height:1.5;">${escapeHtml(t.members||'（メンバー未設定）')}</div>${t.memo ? `<div style="font-size:10px; color:#6b7280; margin-top:2px;">📝 ${escapeHtml(t.memo)}</div>` : ''}</div>`; }).join('')
           : '<div style="font-size:11px; color:#9ca3af;">班情報が登録されていません。</div>';
       } else {
         pdfAllTeamsSection.style.display = 'none';
@@ -1596,48 +1498,29 @@
         if (activeTeam) {
           const c = getTeamColor(activeTeamId) || { bg:'#eff6ff', border:'#2563eb', text:'#1e40af' };
           pdfTeamHeader.style.display = 'block';
-          pdfTeamHeaderInner.style.background = c.bg;
-          pdfTeamHeaderInner.style.borderLeftColor = c.border;
-          pdfTeamName.style.color = c.text;
-          pdfTeamName.textContent = activeTeam.name;
-          pdfTeamMembers.textContent = activeTeam.members || '（未設定）';
-          if (activeTeam.memo) {
-            pdfTeamMemoRow.style.display = 'block';
-            pdfTeamMemo.textContent = activeTeam.memo;
-          } else {
-            pdfTeamMemoRow.style.display = 'none';
-          }
-        } else {
-          pdfTeamHeader.style.display = 'none';
-        }
+          pdfTeamHeaderInner.style.background = c.bg; pdfTeamHeaderInner.style.borderLeftColor = c.border;
+          pdfTeamName.style.color = c.text; pdfTeamName.textContent = activeTeam.name;
+          pdfTeamMembers.textContent = activeTeam.members||'（未設定）';
+          if (activeTeam.memo) { pdfTeamMemoRow.style.display = 'block'; pdfTeamMemo.textContent = activeTeam.memo; }
+          else pdfTeamMemoRow.style.display = 'none';
+        } else { pdfTeamHeader.style.display = 'none'; }
       }
-
       const summary = calculateWorkTime(target);
-      if (summary.hasAnyData) {
-        pdfWorktimeSection.style.display = 'block';
-        pdfWorkTimeContent.innerHTML = summary.html;
-      } else {
-        pdfWorktimeSection.style.display = 'none';
-      }
-
+      if (summary.hasAnyData) { pdfWorktimeSection.style.display = 'block'; pdfWorkTimeContent.innerHTML = summary.html; }
+      else pdfWorktimeSection.style.display = 'none';
       pdfExportBody.innerHTML = buildTableRowsHtml(target, { deletable: false, isAllMode });
 
-      if (document.fonts && document.fonts.ready) {
-        try { await document.fonts.ready; } catch(e) {}
-      }
+      if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const SCALE = 2;
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWmm = pdf.internal.pageSize.getWidth();
-      const pageHmm = pdf.internal.pageSize.getHeight();
+      const pageWmm = pdf.internal.pageSize.getWidth(), pageHmm = pdf.internal.pageSize.getHeight();
       const marginTop = 15, marginBottom = 15, marginSide = 12;
       const contentWmm = pageWmm - marginSide * 2;
-
-      const pxToMm = (px) => (px / SCALE) * (contentWmm / 720);
-      const mmToPx = (mm) => (mm / contentWmm) * 720 * SCALE;
-
+      const pxToMm = px => (px / SCALE) * (contentWmm / 720);
+      const mmToPx = mm => (mm / contentWmm) * 720 * SCALE;
       const CANVAS_OPTS = { scale: SCALE, backgroundColor: '#ffffff', useCORS: true };
 
       const headerCanvas = await html2canvas(pdfHeaderSection, CANVAS_OPTS);
@@ -1650,9 +1533,8 @@
       const tableHeaderHmm = pxToMm(tableHeaderCanvas.height);
 
       const bodyRect = pdfTableBodySection.getBoundingClientRect();
-      const rowEls = pdfExportBody.querySelectorAll('tr');
       const rowBoundaries = [];
-      rowEls.forEach(tr => {
+      pdfExportBody.querySelectorAll('tr').forEach(tr => {
         const r = tr.getBoundingClientRect();
         rowBoundaries.push({ top: (r.top - bodyRect.top) * SCALE, bottom: (r.bottom - bodyRect.top) * SCALE });
       });
@@ -1661,139 +1543,77 @@
       function drawPageTop(includeMainHeader) {
         cursorY = marginTop;
         if (includeMainHeader) {
-          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, headerHmm);
-          cursorY += headerHmm;
-          if (worktimeCanvas) {
-            pdf.addImage(worktimeCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, worktimeHmm);
-            cursorY += worktimeHmm;
-          }
+          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, headerHmm); cursorY += headerHmm;
+          if (worktimeCanvas) { pdf.addImage(worktimeCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, worktimeHmm); cursorY += worktimeHmm; }
         }
-        pdf.addImage(tableHeaderCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, tableHeaderHmm);
-        cursorY += tableHeaderHmm;
+        pdf.addImage(tableHeaderCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, tableHeaderHmm); cursorY += tableHeaderHmm;
       }
       drawPageTop(true);
 
       let sliceStartPx = 0, rowIndex = 0;
       while (rowIndex < rowBoundaries.length) {
-        const remainingHmm = pageHmm - marginBottom - cursorY;
-        const remainingPx = mmToPx(remainingHmm);
-
+        const remainingPx = mmToPx(pageHmm - marginBottom - cursorY);
         let sliceEndPx = sliceStartPx, rowsAdded = 0;
         while (rowIndex < rowBoundaries.length && (rowBoundaries[rowIndex].bottom - sliceStartPx) <= remainingPx) {
-          sliceEndPx = rowBoundaries[rowIndex].bottom;
-          rowIndex++; rowsAdded++;
+          sliceEndPx = rowBoundaries[rowIndex].bottom; rowIndex++; rowsAdded++;
         }
-        if (rowsAdded === 0) {
-          sliceEndPx = rowBoundaries[rowIndex].bottom;
-          rowIndex++;
-        }
-
+        if (rowsAdded === 0) { sliceEndPx = rowBoundaries[rowIndex].bottom; rowIndex++; }
         const sliceHeightPx = Math.max(1, Math.round(sliceEndPx - sliceStartPx));
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = bodyCanvas.width; sliceCanvas.height = sliceHeightPx;
         const ctx = sliceCanvas.getContext('2d');
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, sliceCanvas.width, sliceHeightPx);
         ctx.drawImage(bodyCanvas, 0, sliceStartPx, bodyCanvas.width, sliceHeightPx, 0, 0, bodyCanvas.width, sliceHeightPx);
-
-        const sliceHmm = pxToMm(sliceHeightPx);
-        pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, sliceHmm);
-        cursorY += sliceHmm; sliceStartPx = sliceEndPx;
-
+        pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginSide, cursorY, contentWmm, pxToMm(sliceHeightPx));
+        cursorY += pxToMm(sliceHeightPx); sliceStartPx = sliceEndPx;
         if (rowIndex < rowBoundaries.length) { pdf.addPage(); drawPageTop(false); }
       }
-
       const totalPages = pdf.internal.getNumberOfPages();
       for (let p = 1; p <= totalPages; p++) {
-        pdf.setPage(p); pdf.setFontSize(8); pdf.setTextColor(150, 150, 150);
+        pdf.setPage(p); pdf.setFontSize(8); pdf.setTextColor(150,150,150);
         pdf.text(`${p} / ${totalPages}`, pageWmm - marginSide - 10, pageHmm - 8);
       }
       pdf.save(`経時記録_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
-    } catch(err) {
-      console.error(err); showError('PDFの出力に失敗しました：' + (err.message||err));
-    } finally {
-      btnExportPdf.disabled = false; btnExportPdf.textContent = '📑 PDF出力';
-    }
+    } catch(err) { console.error(err); showError('PDFの出力に失敗しました：' + (err.message||err)); }
+    finally { btnExportPdf.disabled = false; btnExportPdf.textContent = '📑 PDF出力'; }
   });
 
   btnExportExcel.addEventListener('click', () => {
     const target = lastSearchResults.length > 0 ? lastSearchResults : getFilteredEntries(allEntries);
     if (target.length === 0) { showError('出力対象の記録がありません。'); return; }
-
     const borderStyle = {
-      top:    { style: 'thin', color: { rgb: '000000' } },
-      bottom: { style: 'thin', color: { rgb: '000000' } },
-      left:   { style: 'thin', color: { rgb: '000000' } },
-      right:  { style: 'thin', color: { rgb: '000000' } }
+      top: { style:'thin', color:{rgb:'000000'} }, bottom: { style:'thin', color:{rgb:'000000'} },
+      left: { style:'thin', color:{rgb:'000000'} }, right: { style:'thin', color:{rgb:'000000'} }
     };
-    const headerCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
-    const timeCellStyle = { alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: borderStyle };
-    const contentCellStyle = { alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: borderStyle };
-    const endRowCellStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, border: borderStyle };
-
+    const hS = { font:{bold:true}, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border:borderStyle };
+    const tS = { alignment:{horizontal:'center',vertical:'center',wrapText:true}, border:borderStyle };
+    const cS = { alignment:{horizontal:'left',vertical:'center',wrapText:true}, border:borderStyle };
+    const eS = { font:{bold:true}, alignment:{horizontal:'center',vertical:'center'}, border:borderStyle };
     const aoa = [];
-
-    aoa.push([
-      { v: '時間', t: 's', s: headerCellStyle },
-      { v: '場所', t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '内容', t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle },
-      { v: '',     t: 's', s: headerCellStyle }
-    ]);
-
+    aoa.push([{v:'時間',t:'s',s:hS},{v:'場所',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'内容',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'',t:'s',s:hS},{v:'',t:'s',s:hS}]);
     target.forEach(e => {
-      const d = toDate(e.timestamp);
-      const timeStr = formatTimePart(d);
-      aoa.push([
-        { v: timeStr,          t: 's', s: timeCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: e.content || '',  t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle },
-        { v: '',                t: 's', s: contentCellStyle }
-      ]);
+      const timeStr = formatTimePart(toDate(e.timestamp));
+      aoa.push([{v:timeStr,t:'s',s:tS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:e.content||'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS},{v:'',t:'s',s:cS}]);
     });
-
-    const endRow = [{ v: '活動終了', t: 's', s: endRowCellStyle }];
-    for (let c = 1; c <= 9; c++) endRow.push({ v: '', t: 's', s: endRowCellStyle });
+    const endRow = [{v:'活動終了',t:'s',s:eS}];
+    for (let c=1;c<=9;c++) endRow.push({v:'',t:'s',s:eS});
     aoa.push(endRow);
-
     try {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-      ws['!cols'] = [
-        { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 18 },
-        { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }
-      ];
-
+      ws['!cols'] = [{wch:8},{wch:10},{wch:10},{wch:18},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8}];
       const lastRowIdx = aoa.length - 1;
       ws['!merges'] = [];
-      for (let r = 0; r < lastRowIdx; r++) {
-        ws['!merges'].push({ s: { r, c: 1 }, e: { r, c: 2 } });
-        ws['!merges'].push({ s: { r, c: 3 }, e: { r, c: 9 } });
+      for (let r=0; r<lastRowIdx; r++) {
+        ws['!merges'].push({s:{r,c:1},e:{r,c:2}});
+        ws['!merges'].push({s:{r,c:3},e:{r,c:9}});
       }
-      ws['!merges'].push({ s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 9 } });
-
+      ws['!merges'].push({s:{r:lastRowIdx,c:0},e:{r:lastRowIdx,c:9}});
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '経時記録');
-
       const now = new Date();
-      const filename = `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
-      XLSX.writeFile(wb, filename);
-
-      showSuccess(`Excelファイルを出力しました（${target.length}件＋活動終了行、枠線付き）。行をコピーして業務日報の「活動経過」表に貼り付けてください。`);
-    } catch (err) {
-      console.error(err);
-      showError('Excelファイルの出力に失敗しました：' + (err.message || err));
-    }
+      XLSX.writeFile(wb, `経時記録_時間内容_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
+      showSuccess(`Excelファイルを出力しました（${target.length}件＋活動終了行、枠線付き）。`);
+    } catch(err) { console.error(err); showError('Excelファイルの出力に失敗しました：' + (err.message||err)); }
   });
 
   function downloadJson(data, filename) {
@@ -1811,19 +1631,18 @@
   btnBackup.addEventListener('click', () => {
     if (!currentUser) return;
     const templatesFlat = [];
-    Object.keys(allTemplates).forEach(type => { allTemplates[type].forEach(t => templatesFlat.push({ type, text: t.text })); });
-    const exportData = {
+    Object.keys(allTemplates).forEach(type => allTemplates[type].forEach(t => templatesFlat.push({ type, text: t.text })));
+    downloadJson({
       version: 3, exported_at: new Date().toISOString(),
       entries: allEntries.map(e => ({ timestamp: toDate(e.timestamp).toISOString(), from: e.from||'', to: e.to||'', content: e.content||'', entry_type: e.entry_type||'normal', team_id: e.team_id||null })),
       templates: templatesFlat,
-      teams: allTeams.map(t => ({ id: t.id, name: t.name, members: t.members||'', memo: t.memo || '', isArchived: !!t.isArchived }))
-    };
-    downloadJson(exportData, `chronology_backup_ALL_${nowStamp()}.json`);
+      teams: allTeams.map(t => ({ id: t.id, name: t.name, members: t.members||'', memo: t.memo||'', isArchived: !!t.isArchived }))
+    }, `chronology_backup_ALL_${nowStamp()}.json`);
     showSuccess('全体バックアップを保存しました。');
   });
 
   btnRestoreTrigger.addEventListener('click', () => inputRestoreFile.click());
-  inputRestoreFile.addEventListener('change', async (e) => {
+  inputRestoreFile.addEventListener('change', async e => {
     const file = e.target.files[0]; inputRestoreFile.value = '';
     if (!file || !currentUser) return;
     if (!confirm('全体バックアップから復元します。\n現在の記録・定型文・班情報はすべて削除され、選択したファイルの内容に置き換わります。\nこの操作は取り消せません。本当に復元しますか？')) return;
@@ -1843,18 +1662,8 @@
         await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', team_id: tId, createdAt: serverTimestamp() });
         done++; btnRestoreTrigger.textContent = `記録を復元中…（${done}/${total}）`;
       }
-      for (const tmpl of (data.templates||[])) {
-        await addDocSafe(collection(db, WS_PATH, WS_ID, 'templates'), { type: tmpl.type, text: tmpl.text, createdAtLocal: Date.now() });
-      }
-      for (const team of (data.teams||[])) {
-        await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id || String(Date.now())), {
-          name: team.name,
-          members: team.members || '',
-          memo: team.memo || '',
-          isArchived: !!team.isArchived,
-          createdAtLocal: Date.now()
-        });
-      }
+      for (const tmpl of (data.templates||[])) await addDocSafe(collection(db, WS_PATH, WS_ID, 'templates'), { type: tmpl.type, text: tmpl.text, createdAtLocal: Date.now() });
+      for (const team of (data.teams||[])) await setDocSafe(doc(db, WS_PATH, WS_ID, 'teams', team.id||String(Date.now())), { name: team.name, members: team.members||'', memo: team.memo||'', isArchived: !!team.isArchived, createdAtLocal: Date.now() });
       showSuccess(`全体バックアップの復元が完了しました（記録${total}件）。`);
     } catch(err) { if(!isTerminatedError(err)) { console.error(err); showError('復元に失敗しました：' + (err.message||err)); } }
     finally { btnRestoreTrigger.disabled = false; btnRestoreTrigger.textContent = '⬆️ 全体バックアップから復元（すべて上書き）'; }
@@ -1864,19 +1673,15 @@
     if (!currentUser) return;
     const targetEntries = getFilteredEntries(allEntries);
     if (targetEntries.length === 0) { showError('保存できるクロノロがありません。'); return; }
-    const exportData = {
+    downloadJson({
       type: 'entries_only', version: 2, exported_at: new Date().toISOString(),
-      entries: targetEntries.map(e => ({
-        timestamp: toDate(e.timestamp).toISOString(),
-        from: e.from || '', to: e.to || '', content: e.content || '', entry_type: e.entry_type || 'normal', team_id: e.team_id || null
-      }))
-    };
-    downloadJson(exportData, `chronolo_${activeTeamId === 'ALL' ? 'ALL' : 'TEAM'}_${nowStamp()}.json`);
+      entries: targetEntries.map(e => ({ timestamp: toDate(e.timestamp).toISOString(), from: e.from||'', to: e.to||'', content: e.content||'', entry_type: e.entry_type||'normal', team_id: e.team_id||null }))
+    }, `chronolo_${activeTeamId === 'ALL' ? 'ALL' : 'TEAM'}_${nowStamp()}.json`);
     showSuccess(`クロノロ${targetEntries.length}件を保存しました。`);
   });
 
   btnRestoreEntriesTrigger.addEventListener('click', () => inputRestoreEntriesFile.click());
-  inputRestoreEntriesFile.addEventListener('change', async (e) => {
+  inputRestoreEntriesFile.addEventListener('change', async e => {
     const file = e.target.files[0]; inputRestoreEntriesFile.value = '';
     if (!file || !currentUser) return;
     if (!confirm('現在表示中の班のクロノロだけを復元します。\n現在表示中のクロノロはすべて削除され、選択したファイルの内容に置き換わります。\n定型文・班情報はそのまま残ります。\n\n※team_idの無い古いバックアップの場合、今選択している班に自動的に割り当てられます。\n\n本当に復元しますか？')) return;
@@ -1885,14 +1690,11 @@
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.entries)) { showError('このファイルはクロノロのバックアップとして認識できません。'); return; }
       btnRestoreEntriesTrigger.textContent = '既存のクロノロを削除中…';
-      const targetEntries = getFilteredEntries(allEntries);
-      await deleteEntriesBatch(targetEntries);
+      await deleteEntriesBatch(getFilteredEntries(allEntries));
       const total = data.entries.length; let done = 0;
       for (const entry of data.entries) {
         const tId = entry.team_id || (activeTeamId !== 'ALL' ? activeTeamId : null);
-        await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), {
-          timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', team_id: tId, createdAt: serverTimestamp()
-        });
+        await addDocSafe(collection(db, WS_PATH, WS_ID, 'entries'), { timestamp: new Date(entry.timestamp), from: entry.from||'', to: entry.to||'', content: entry.content||'', entry_type: entry.entry_type||'normal', team_id: tId, createdAt: serverTimestamp() });
         done++; btnRestoreEntriesTrigger.textContent = `復元中…（${done}/${total}）`;
       }
       showSuccess(`クロノロ${total}件を復元しました。`);
@@ -1906,22 +1708,17 @@
     if (!confirm(`現在表示中のクロノロ全${targetEntries.length}件を削除します。\n定型文・班情報はそのまま残ります。\nこの操作は取り消せません。本当に削除しますか？`)) return;
     if (!confirm('最終確認：本当に削除してよろしいですか？')) return;
     const originalText = btnDeleteAll.textContent;
-    btnDeleteAll.disabled = true;
-    btnDeleteAll.textContent = '削除中…';
+    btnDeleteAll.disabled = true; btnDeleteAll.textContent = '削除中…';
     try {
       await deleteEntriesBatch(targetEntries);
       showSuccess('クロノロを削除しました。定型文・班情報はそのまま残っています。');
-    } catch(err) {
-      if (!isTerminatedError(err)) showError('削除に失敗しました：' + (err.message||err));
-    } finally {
-      btnDeleteAll.disabled = false;
-      btnDeleteAll.textContent = originalText;
-    }
+    } catch(err) { if (!isTerminatedError(err)) showError('削除に失敗しました：' + (err.message||err)); }
+    finally { btnDeleteAll.disabled = false; btnDeleteAll.textContent = originalText; }
   });
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch((err) => console.warn('SW登録失敗：', err));
+      navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('SW登録失敗：', err));
     });
   }
 </script>
